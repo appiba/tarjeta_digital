@@ -77,7 +77,13 @@ ACTIVITY_LOG
 
 1. Ve a [script.google.com](https://script.google.com).
 2. Crea un proyecto nuevo.
-3. Crea estos archivos dentro del proyecto y pega el contenido correspondiente desde `apps-script/`:
+3. Camino corto: crea un archivo `Code.gs`, borra su contenido y pega todo el contenido de:
+
+```text
+apps-script/COMPLETE_APPS_SCRIPT.gs
+```
+
+Tambien puedes usar la version separada por archivos si prefieres mantener el proyecto organizado:
 
 ```text
 Code.gs
