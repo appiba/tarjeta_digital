@@ -49,8 +49,8 @@ function generateSecureToken_() {
 }
 
 function createPasswordHash_(password) {
-  if (!password || String(password).length < 8) {
-    throw appError_('La contrasena debe tener al menos 8 caracteres.', 'weak_password');
+  if (!password || String(password).length < 6) {
+    throw appError_('La contrasena debe tener al menos 6 caracteres.', 'weak_password');
   }
 
   ensureAdminSecret_();

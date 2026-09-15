@@ -107,6 +107,7 @@ INITIAL_ADMIN_PASSWORD = una-contrasena-segura
 ```
 
 `INITIAL_ADMIN_PASSWORD` se elimina automaticamente despues de ejecutar `createSuperAdmin()`.
+No coloques contrasenas reales dentro del repositorio publico. La clave inicial debe vivir solo en `Script Properties` y despues queda guardada como hash en la hoja `USERS`.
 
 ## Ejecutar setupSystem()
 
