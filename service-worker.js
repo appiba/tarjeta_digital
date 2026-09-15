@@ -1,4 +1,4 @@
-const CACHE_NAME = 'loyalty-platform-ui-v4';
+const CACHE_NAME = 'loyalty-platform-api-v5';
 const STATIC_ASSETS = [
   './',
   './index.html',

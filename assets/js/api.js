@@ -1,4 +1,4 @@
-const API_URL = 'URL_DEL_APPS_SCRIPT';
+const API_URL = 'https://script.google.com/macros/s/AKfycbx9po1dIm-5cGsPV31rjEz_SAURlQilTaHeExaT5VUVkTnz42-cc6J33CbFDTAfj5f7dw/exec';
 
 (function() {
   var STORAGE_KEY = 'loyalty_session';
