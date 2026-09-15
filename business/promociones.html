@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Promociones | Loyalty</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/business.css">
+</head>
+<body class="business-accent" data-root="../">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="../index.html"><span class="brand__mark">L</span><span>Loyalty</span></a>
+      <nav aria-label="Negocio">
+        <a href="index.html"><i data-lucide="layout-dashboard"></i>Inicio</a>
+        <a href="tarjeta.html"><i data-lucide="badge"></i>Mi tarjeta</a>
+        <a href="clientes.html"><i data-lucide="users"></i>Clientes</a>
+        <a class="is-active" href="promociones.html"><i data-lucide="megaphone"></i>Promociones</a>
+        <a href="scanner.html"><i data-lucide="scan-line"></i>Escanear</a>
+        <a href="transacciones.html"><i data-lucide="receipt-text"></i>Transacciones</a>
+        <a href="configuracion.html"><i data-lucide="settings"></i>Configuracion</a>
+        <button type="button" data-logout><i data-lucide="log-out"></i>Cerrar sesion</button>
+      </nav>
+    </aside>
+    <main class="content">
+      <section class="panel-heading">
+        <div>
+          <span class="badge" data-page-label>Promociones</span>
+          <h1>Promociones</h1>
+          <p>Campanas visibles para clientes del negocio.</p>
+        </div>
+        <div class="user-chip"><span data-user-name>Usuario</span></div>
+      </section>
+      <section class="panel-card">
+        <h2>Sin promociones</h2>
+        <p>La gestion de promociones se implementara en la Fase 7.</p>
+      </section>
+    </main>
+  </div>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/business.js"></script>
+  <script>BusinessApp.init('Promociones', ['business_owner']);</script>
+</body>
+</html>

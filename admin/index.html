@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin | Loyalty</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body class="admin-accent" data-root="../">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="../index.html"><span class="brand__mark">L</span><span>Loyalty</span></a>
+      <nav aria-label="Administrador">
+        <a class="is-active" href="index.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+        <a href="solicitudes.html"><i data-lucide="inbox"></i>Solicitudes</a>
+        <a href="negocios.html"><i data-lucide="store"></i>Negocios</a>
+        <a href="clientes.html"><i data-lucide="users"></i>Clientes</a>
+        <a href="reportes.html"><i data-lucide="bar-chart-3"></i>Reportes</a>
+        <a href="configuracion.html"><i data-lucide="settings"></i>Configuracion</a>
+        <button type="button" data-logout><i data-lucide="log-out"></i>Cerrar sesion</button>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <section class="panel-heading">
+        <div>
+          <span class="badge" data-page-label>Dashboard</span>
+          <h1>Administrador general</h1>
+          <p data-api-state>Validando sesion...</p>
+        </div>
+        <div class="user-chip"><span data-user-name>Usuario</span></div>
+      </section>
+
+      <section class="stats-grid">
+        <article class="stat-card"><span>Negocios activos</span><strong data-stat="active_businesses">0</strong></article>
+        <article class="stat-card"><span>Solicitudes pendientes</span><strong data-stat="pending_requests">0</strong></article>
+        <article class="stat-card"><span>Clientes totales</span><strong data-stat="total_customers">0</strong></article>
+        <article class="stat-card"><span>Transacciones</span><strong data-stat="total_transactions">0</strong></article>
+        <article class="stat-card"><span>Premios canjeados</span><strong data-stat="redeemed_rewards">0</strong></article>
+        <article class="stat-card"><span>Suspendidos</span><strong data-stat="suspended_businesses">0</strong></article>
+      </section>
+
+      <section class="panel-card">
+        <h2>Base de plataforma</h2>
+        <p>La estructura de Fase 1 esta lista para autenticar usuarios contra Google Apps Script.</p>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/admin.js"></script>
+  <script>AdminApp.initDashboard();</script>
+</body>
+</html>

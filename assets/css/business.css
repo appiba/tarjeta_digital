@@ -1,0 +1,9 @@
+.business-accent {
+  --primary: #0f766e;
+  --secondary: #f59e0b;
+}
+
+.business-code {
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+}

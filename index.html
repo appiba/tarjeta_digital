@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1f5eff">
+  <title>Loyalty</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body data-root="">
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="index.html" aria-label="Loyalty">
+        <span class="brand__mark">L</span>
+        <span>Loyalty</span>
+      </a>
+      <div class="nav-actions">
+        <a class="button button--ghost" href="solicitud.html">
+          <i data-lucide="store"></i>
+          Solicitar acceso
+        </a>
+        <a class="button button--primary" href="login.html">
+          <i data-lucide="log-in"></i>
+          Iniciar sesion
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="page hero">
+    <section class="hero__grid">
+      <div>
+        <span class="badge">Fase 1</span>
+        <h1>Tarjetas digitales de lealtad para negocios locales.</h1>
+        <p>Base web publicada con GitHub Pages, preparada para autenticacion con Google Apps Script y Google Sheets.</p>
+        <div class="hero__actions">
+          <a class="button button--primary" href="login.html">Entrar al panel</a>
+          <a class="button button--ghost" href="solicitud.html">Crear solicitud</a>
+        </div>
+      </div>
+
+      <div class="preview-card" aria-label="Vista previa de tarjeta digital">
+        <div class="loyalty-preview">
+          <div class="loyalty-preview__top">
+            <div class="loyalty-preview__logo">CC</div>
+            <div class="qr-box">QR</div>
+          </div>
+          <div>
+            <p style="color: rgba(255,255,255,.78); margin: 0;">Cafe Central</p>
+            <h2 style="font-size: 2rem; margin: 8px 0 0;">Hola, Patricio</h2>
+            <p style="color: rgba(255,255,255,.78); margin: 8px 0 0;">7 de 10 sellos</p>
+            <div class="stamp-row" aria-hidden="true">
+              <span class="stamp is-filled"></span>
+              <span class="stamp is-filled"></span>
+              <span class="stamp is-filled"></span>
+              <span class="stamp is-filled"></span>
+              <span class="stamp is-filled"></span>
+              <span class="stamp is-filled"></span>
+              <span class="stamp is-filled"></span>
+              <span class="stamp"></span>
+              <span class="stamp"></span>
+              <span class="stamp"></span>
+            </div>
+          </div>
+          <strong>Premio: 1 cafe gratis</strong>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="assets/js/utils.js"></script>
+  <script>AppUtils.mountIcons();</script>
+</body>
+</html>

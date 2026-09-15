@@ -1,0 +1,286 @@
+(function() {
+  async function init(pageName) {
+    Auth.bindLogout();
+    var context = await Auth.protectPage(['super_admin']);
+
+    if (!context) {
+      return;
+    }
+
+    var pageLabel = AppUtils.qs('[data-page-label]');
+    if (pageLabel) {
+      pageLabel.textContent = pageName || 'Dashboard';
+    }
+
+    var configured = AppUtils.qs('[data-api-state]');
+    if (configured) {
+      configured.textContent = 'API conectada y sesion validada';
+    }
+
+    AppUtils.mountIcons();
+    return context;
+  }
+
+  async function initDashboard() {
+    var context = await init('Dashboard');
+
+    if (!context) {
+      return;
+    }
+
+    try {
+      var result = await AppAPI.apiRequest('getAdminStats');
+
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudieron cargar estadisticas.');
+      }
+
+      setText('[data-stat="active_businesses"]', result.data.active_businesses);
+      setText('[data-stat="pending_requests"]', result.data.pending_requests);
+      setText('[data-stat="total_customers"]', result.data.total_customers);
+      setText('[data-stat="total_transactions"]', result.data.total_transactions);
+      setText('[data-stat="redeemed_rewards"]', result.data.redeemed_rewards);
+      setText('[data-stat="suspended_businesses"]', result.data.suspended_businesses);
+    } catch (error) {
+      AppUtils.toast(error.message, 'error');
+    }
+  }
+
+  async function initRequests() {
+    var context = await init('Solicitudes');
+
+    if (!context) {
+      return;
+    }
+
+    await loadRequests();
+  }
+
+  async function loadRequests() {
+    var container = AppUtils.qs('[data-requests-list]');
+
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML = '<p>Cargando solicitudes...</p>';
+
+    try {
+      var result = await AppAPI.apiRequest('getRequests', {});
+
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudieron cargar solicitudes.');
+      }
+
+      var requests = result.data.requests || [];
+
+      if (requests.length === 0) {
+        container.innerHTML = '<article class="panel-card"><h2>Sin solicitudes</h2><p>Cuando un negocio envie una solicitud aparecera aqui.</p></article>';
+        return;
+      }
+
+      container.innerHTML = requests.map(renderRequestCard).join('');
+      bindRequestActions(container);
+      AppUtils.mountIcons();
+    } catch (error) {
+      container.innerHTML = '<article class="panel-card"><h2>Error</h2><p>' + escapeHtml(error.message) + '</p></article>';
+    }
+  }
+
+  function renderRequestCard(request) {
+    var createdAt = AppUtils.formatDate(request.created_at);
+    var colors = '<span class="color-dot" style="background:' + escapeAttr(request.primary_color || '#1f5eff') + '"></span>' +
+      '<span class="color-dot" style="background:' + escapeAttr(request.secondary_color || '#12b981') + '"></span>';
+    var actions = '';
+
+    if (request.status === 'pending') {
+      actions = '<div class="request-card__actions">' +
+        '<button class="button button--primary" type="button" data-approve-request="' + escapeAttr(request.request_id) + '"><i data-lucide="check"></i>Aprobar</button>' +
+        '<button class="button button--ghost" type="button" data-reject-request="' + escapeAttr(request.request_id) + '"><i data-lucide="x"></i>Rechazar</button>' +
+        '</div>';
+    }
+
+    return '<article class="request-card">' +
+      '<div class="request-card__main">' +
+        '<div>' +
+          '<span class="badge">' + escapeHtml(request.status) + '</span>' +
+          '<h2>' + escapeHtml(request.business_name) + '</h2>' +
+          '<p>' + escapeHtml(request.business_type || 'Negocio') + ' en ' + escapeHtml(request.city || 'sin ciudad') + '</p>' +
+        '</div>' +
+        '<div class="request-card__colors" aria-label="Colores">' + colors + '</div>' +
+      '</div>' +
+      '<dl class="request-card__details">' +
+        '<div><dt>Propietario</dt><dd>' + escapeHtml(request.owner_name) + '</dd></div>' +
+        '<div><dt>Correo</dt><dd>' + escapeHtml(request.email) + '</dd></div>' +
+        '<div><dt>WhatsApp</dt><dd>' + escapeHtml(request.whatsapp) + '</dd></div>' +
+        '<div><dt>Programa</dt><dd>' + escapeHtml(request.loyalty_type) + ' / meta ' + escapeHtml(request.suggested_goal) + '</dd></div>' +
+        '<div><dt>Premio</dt><dd>' + escapeHtml(request.suggested_reward) + '</dd></div>' +
+        '<div><dt>Fecha</dt><dd>' + escapeHtml(createdAt) + '</dd></div>' +
+      '</dl>' +
+      actions +
+      '</article>';
+  }
+
+  function bindRequestActions(container) {
+    AppUtils.qsa('[data-approve-request]', container).forEach(function(button) {
+      button.addEventListener('click', function() {
+        approveRequest(button.dataset.approveRequest, button);
+      });
+    });
+
+    AppUtils.qsa('[data-reject-request]', container).forEach(function(button) {
+      button.addEventListener('click', function() {
+        rejectRequest(button.dataset.rejectRequest, button);
+      });
+    });
+  }
+
+  async function approveRequest(requestId, button) {
+    if (!window.confirm('Aprobar esta solicitud y crear acceso para el negocio?')) {
+      return;
+    }
+
+    AppUtils.setButtonLoading(button, true, 'Aprobando...');
+
+    try {
+      var result = await AppAPI.apiRequest('approveBusiness', {
+        request_id: requestId
+      });
+
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudo aprobar.');
+      }
+
+      showApprovalResult(result.data);
+      AppUtils.toast('Negocio aprobado.', 'success');
+      await loadRequests();
+    } catch (error) {
+      AppUtils.toast(error.message, 'error');
+      AppUtils.setButtonLoading(button, false);
+    }
+  }
+
+  async function rejectRequest(requestId, button) {
+    var reason = window.prompt('Motivo de rechazo');
+
+    if (!reason) {
+      return;
+    }
+
+    AppUtils.setButtonLoading(button, true, 'Rechazando...');
+
+    try {
+      var result = await AppAPI.apiRequest('rejectBusiness', {
+        request_id: requestId,
+        rejection_reason: reason
+      });
+
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudo rechazar.');
+      }
+
+      AppUtils.toast('Solicitud rechazada.', 'success');
+      await loadRequests();
+    } catch (error) {
+      AppUtils.toast(error.message, 'error');
+      AppUtils.setButtonLoading(button, false);
+    }
+  }
+
+  function showApprovalResult(data) {
+    var box = AppUtils.qs('[data-approval-result]');
+
+    if (!box) {
+      return;
+    }
+
+    box.hidden = false;
+    box.innerHTML = '<h2>Acceso creado</h2>' +
+      '<p>Entrega estos datos al propietario del negocio. La contrasena temporal solo se muestra ahora.</p>' +
+      '<ul class="route-list">' +
+        '<li><span>Negocio</span><strong>' + escapeHtml(data.business.business_name) + '</strong></li>' +
+        '<li><span>Codigo</span><strong>' + escapeHtml(data.business.business_code) + '</strong></li>' +
+        '<li><span>Correo</span><strong>' + escapeHtml(data.owner.email) + '</strong></li>' +
+        '<li><span>Contrasena temporal</span><strong>' + escapeHtml(data.owner.temporary_password) + '</strong></li>' +
+        '<li><span>Registro clientes</span><strong>' + escapeHtml(data.register_url || 'Configura APP_URL') + '</strong></li>' +
+      '</ul>';
+  }
+
+  async function initBusinesses() {
+    var context = await init('Negocios');
+
+    if (!context) {
+      return;
+    }
+
+    var container = AppUtils.qs('[data-businesses-list]');
+
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML = '<p>Cargando negocios...</p>';
+
+    try {
+      var result = await AppAPI.apiRequest('listBusinesses', {});
+
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudieron cargar negocios.');
+      }
+
+      var businesses = result.data.businesses || [];
+
+      if (businesses.length === 0) {
+        container.innerHTML = '<article class="panel-card"><h2>Aun no hay negocios</h2><p>Aprueba una solicitud para crear el primer negocio.</p></article>';
+        return;
+      }
+
+      container.innerHTML = businesses.map(renderBusinessCard).join('');
+    } catch (error) {
+      container.innerHTML = '<article class="panel-card"><h2>Error</h2><p>' + escapeHtml(error.message) + '</p></article>';
+    }
+  }
+
+  function renderBusinessCard(business) {
+    return '<article class="request-card">' +
+      '<div class="request-card__main">' +
+        '<div><span class="badge">' + escapeHtml(business.status) + '</span><h2>' + escapeHtml(business.business_name) + '</h2><p>' + escapeHtml(business.business_type || '') + '</p></div>' +
+        '<strong class="business-code">' + escapeHtml(business.business_code) + '</strong>' +
+      '</div>' +
+      '<dl class="request-card__details">' +
+        '<div><dt>Correo</dt><dd>' + escapeHtml(business.email) + '</dd></div>' +
+        '<div><dt>WhatsApp</dt><dd>' + escapeHtml(business.whatsapp) + '</dd></div>' +
+        '<div><dt>Ciudad</dt><dd>' + escapeHtml(business.city) + '</dd></div>' +
+        '<div><dt>Plan</dt><dd>' + escapeHtml(business.plan) + '</dd></div>' +
+      '</dl>' +
+      '</article>';
+  }
+
+  function setText(selector, value) {
+    var node = AppUtils.qs(selector);
+
+    if (node) {
+      node.textContent = value === undefined || value === null ? '0' : String(value);
+    }
+  }
+
+  function escapeHtml(value) {
+    return String(value === undefined || value === null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value).replace(/`/g, '&#096;');
+  }
+
+  window.AdminApp = {
+    init: init,
+    initBusinesses: initBusinesses,
+    initDashboard: initDashboard,
+    initRequests: initRequests
+  };
+})();

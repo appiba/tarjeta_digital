@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reportes | Loyalty</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body class="admin-accent" data-root="../">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="../index.html"><span class="brand__mark">L</span><span>Loyalty</span></a>
+      <nav aria-label="Administrador">
+        <a href="index.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+        <a href="solicitudes.html"><i data-lucide="inbox"></i>Solicitudes</a>
+        <a href="negocios.html"><i data-lucide="store"></i>Negocios</a>
+        <a href="clientes.html"><i data-lucide="users"></i>Clientes</a>
+        <a class="is-active" href="reportes.html"><i data-lucide="bar-chart-3"></i>Reportes</a>
+        <a href="configuracion.html"><i data-lucide="settings"></i>Configuracion</a>
+        <button type="button" data-logout><i data-lucide="log-out"></i>Cerrar sesion</button>
+      </nav>
+    </aside>
+    <main class="content">
+      <section class="panel-heading">
+        <div>
+          <span class="badge" data-page-label>Reportes</span>
+          <h1>Reportes</h1>
+          <p>Indicadores consolidados de uso y actividad.</p>
+        </div>
+        <div class="user-chip"><span data-user-name>Usuario</span></div>
+      </section>
+      <section class="panel-card">
+        <h2>Sin datos suficientes</h2>
+        <p>Los reportes se activaran cuando existan transacciones.</p>
+      </section>
+    </main>
+  </div>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/admin.js"></script>
+  <script>AdminApp.init('Reportes');</script>
+</body>
+</html>

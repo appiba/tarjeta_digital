@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Configuracion | Loyalty</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body class="admin-accent" data-root="../">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="../index.html"><span class="brand__mark">L</span><span>Loyalty</span></a>
+      <nav aria-label="Administrador">
+        <a href="index.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+        <a href="solicitudes.html"><i data-lucide="inbox"></i>Solicitudes</a>
+        <a href="negocios.html"><i data-lucide="store"></i>Negocios</a>
+        <a href="clientes.html"><i data-lucide="users"></i>Clientes</a>
+        <a href="reportes.html"><i data-lucide="bar-chart-3"></i>Reportes</a>
+        <a class="is-active" href="configuracion.html"><i data-lucide="settings"></i>Configuracion</a>
+        <button type="button" data-logout><i data-lucide="log-out"></i>Cerrar sesion</button>
+      </nav>
+    </aside>
+    <main class="content">
+      <section class="panel-heading">
+        <div>
+          <span class="badge" data-page-label>Configuracion</span>
+          <h1>Configuracion</h1>
+          <p>Valores generales de la plataforma.</p>
+        </div>
+        <div class="user-chip"><span data-user-name>Usuario</span></div>
+      </section>
+      <section class="panel-card admin-status">
+        <div class="admin-status__row"><span>Autenticacion</span><span class="badge">Activa</span></div>
+        <div class="admin-status__row"><span>Google Sheets</span><span class="badge">Script Properties</span></div>
+        <div class="admin-status__row"><span>Sesiones</span><span class="badge">SESSIONS</span></div>
+      </section>
+    </main>
+  </div>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/admin.js"></script>
+  <script>AdminApp.init('Configuracion');</script>
+</body>
+</html>

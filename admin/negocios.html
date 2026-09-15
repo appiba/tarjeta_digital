@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Negocios | Loyalty</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body class="admin-accent" data-root="../">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="../index.html"><span class="brand__mark">L</span><span>Loyalty</span></a>
+      <nav aria-label="Administrador">
+        <a href="index.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+        <a href="solicitudes.html"><i data-lucide="inbox"></i>Solicitudes</a>
+        <a class="is-active" href="negocios.html"><i data-lucide="store"></i>Negocios</a>
+        <a href="clientes.html"><i data-lucide="users"></i>Clientes</a>
+        <a href="reportes.html"><i data-lucide="bar-chart-3"></i>Reportes</a>
+        <a href="configuracion.html"><i data-lucide="settings"></i>Configuracion</a>
+        <button type="button" data-logout><i data-lucide="log-out"></i>Cerrar sesion</button>
+      </nav>
+    </aside>
+    <main class="content">
+      <section class="panel-heading">
+        <div>
+          <span class="badge" data-page-label>Negocios</span>
+          <h1>Negocios</h1>
+          <p>Control general de negocios aprobados.</p>
+        </div>
+        <div class="user-chip"><span data-user-name>Usuario</span></div>
+      </section>
+      <section class="admin-list" data-businesses-list></section>
+    </main>
+  </div>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/admin.js"></script>
+  <script>AdminApp.initBusinesses();</script>
+</body>
+</html>
