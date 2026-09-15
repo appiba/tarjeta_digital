@@ -19,6 +19,23 @@
   background: #ffffff;
 }
 
+.admin-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(280px, 1.1fr);
+  gap: 16px;
+  align-items: start;
+  margin-top: 16px;
+}
+
+.admin-phone-panel {
+  display: grid;
+  place-items: center;
+}
+
+.phone-frame--small {
+  width: min(100%, 318px);
+}
+
 .admin-list {
   display: grid;
   gap: 14px;
@@ -93,6 +110,10 @@
 }
 
 @media (max-width: 820px) {
+  .admin-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
   .request-card__main,
   .request-card__actions {
     flex-direction: column;

@@ -11,27 +11,54 @@
   <main class="client-shell">
     <section class="client-placeholder">
       <div class="client-card">
-        <div class="client-card__visual">
-          <div class="loyalty-preview__top">
-            <div class="loyalty-preview__logo">L</div>
-            <div class="qr-box">QR</div>
+        <div class="client-card__bar">
+          <a href="../index.html" aria-label="Volver"><i data-lucide="chevron-left"></i></a>
+          <strong>Mi tarjeta de lealtad</strong>
+          <i data-lucide="settings"></i>
+        </div>
+        <div class="coffee-card">
+          <div class="coffee-card__hero">
+            <div>
+              <div class="loyalty-preview__logo">CC</div>
+              <h1>Cafe Central</h1>
+              <p>Buen cafe, mejores momentos</p>
+            </div>
           </div>
-          <div>
-            <p style="color: rgba(255,255,255,.78); margin: 0;">Negocio</p>
-            <h1 style="font-size: 2rem; margin: 8px 0 0;">Hola</h1>
-            <p style="color: rgba(255,255,255,.78); margin: 8px 0 0;">Tu tarjeta digital aparecera aqui.</p>
+          <div class="coffee-card__body">
+            <strong>Hola, Patricio Nieto</strong>
+            <div><strong>7 de 10 sellos</strong> <span style="float:right;">70%</span></div>
+            <div class="coffee-beans">
+              <span class="coffee-bean"></span><span class="coffee-bean"></span><span class="coffee-bean"></span><span class="coffee-bean"></span><span class="coffee-bean"></span>
+              <span class="coffee-bean"></span><span class="coffee-bean"></span><span class="coffee-bean is-empty"></span><span class="coffee-bean is-empty"></span><span class="coffee-bean is-empty"></span>
+            </div>
+            <p>Te faltan 3 sellos para tu premio.</p>
+            <div class="reward-strip"><i data-lucide="gift"></i><strong>Premio: 1 cafe gratis</strong></div>
+            <div class="visual-qr" aria-label="QR visual">
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <p style="text-align:center;">Presenta este codigo en el local</p>
           </div>
-          <strong>Premio pendiente</strong>
+        </div>
+        <div class="mini-promo">
+          <strong>Promo de hoy</strong>
+          <p>2x1 en cappuccino</p>
         </div>
       </div>
     </section>
   </main>
   <nav class="bottom-nav" aria-label="Cliente">
-    <a class="is-active" href="index.html">Tarjeta</a>
-    <a href="historial.html">Historial</a>
-    <a href="promociones.html">Promos</a>
-    <a href="perfil.html">Perfil</a>
+    <a class="is-active" href="index.html"><i data-lucide="badge"></i>Tarjeta</a>
+    <a href="historial.html"><i data-lucide="clock-3"></i>Historial</a>
+    <a href="promociones.html"><i data-lucide="megaphone"></i>Promos</a>
+    <a href="perfil.html"><i data-lucide="user"></i>Perfil</a>
   </nav>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../assets/js/utils.js"></script>
   <script src="../assets/js/client.js"></script>
   <script>ClientApp.init();</script>
