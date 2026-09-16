@@ -2,6 +2,7 @@
   var currentBusinessCode = '';
 
   async function init() {
+    AppUtils.mountIcons();
     currentBusinessCode = getBusinessCode();
 
     if (!currentBusinessCode) {
@@ -27,6 +28,11 @@
       var reward = result.data.reward || {};
       var program = result.data.program || {};
 
+      setThemeColor('--primary', business.primary_color || '#2563eb');
+      setThemeColor('--secondary', business.secondary_color || '#0f766e');
+      setText('[data-register-initials]', initials(business.business_name || 'Loyalty'));
+      setText('[data-register-business]', business.business_name || 'Loyalty');
+      setText('[data-register-type]', business.business_type || 'Clientes mas cerca');
       setState('Tarjeta de ' + (business.business_name || 'este negocio') + '. Meta: ' + (program.goal || '10') + '. Premio: ' + (reward.name || 'Premio especial') + '.');
       showForm(true);
     } catch (error) {
@@ -102,6 +108,8 @@
         copyToClipboard(data.card_url);
       });
     }
+
+    AppUtils.mountIcons();
   }
 
   function showForm(visible) {
@@ -113,11 +121,18 @@
   }
 
   function setState(message) {
-    var node = AppUtils.qs('[data-register-state]');
+    setText('[data-register-state]', message);
+  }
 
-    if (node) {
-      node.textContent = message;
-    }
+  function setText(selector, message) {
+    AppUtils.qsa(selector).forEach(function(item) {
+      item.textContent = message;
+    });
+  }
+
+  function setThemeColor(name, value) {
+    document.documentElement.style.setProperty(name, value);
+    document.body.style.setProperty(name, value);
   }
 
   async function copyToClipboard(text) {
@@ -145,6 +160,15 @@
 
   function escapeAttr(value) {
     return escapeHtml(value).replace(/`/g, '&#096;');
+  }
+
+  function initials(value) {
+    return String(value || 'L')
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map(function(part) { return part.charAt(0).toUpperCase(); })
+      .join('') || 'L';
   }
 
   window.RegisterApp = {

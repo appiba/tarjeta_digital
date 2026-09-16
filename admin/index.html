@@ -16,6 +16,7 @@
         <a href="solicitudes.html"><i data-lucide="inbox"></i>Solicitudes</a>
         <a href="negocios.html"><i data-lucide="store"></i>Negocios</a>
         <a href="clientes.html"><i data-lucide="users"></i>Clientes</a>
+        <a href="transacciones.html"><i data-lucide="receipt-text"></i>Transacciones</a>
         <a href="reportes.html"><i data-lucide="bar-chart-3"></i>Reportes</a>
         <a href="configuracion.html"><i data-lucide="settings"></i>Configuracion</a>
         <button type="button" data-logout><i data-lucide="log-out"></i>Cerrar sesion</button>
@@ -37,62 +38,32 @@
         <article class="stat-card"><span>Solicitudes pendientes</span><strong data-stat="pending_requests">0</strong></article>
         <article class="stat-card"><span>Clientes totales</span><strong data-stat="total_customers">0</strong></article>
         <article class="stat-card"><span>Transacciones</span><strong data-stat="total_transactions">0</strong></article>
-        <article class="stat-card"><span>Premios canjeados</span><strong data-stat="redeemed_rewards">0</strong></article>
-        <article class="stat-card"><span>Suspendidos</span><strong data-stat="suspended_businesses">0</strong></article>
       </section>
 
       <section class="admin-dashboard-grid">
-        <article class="panel-card admin-phone-panel">
-          <div class="phone-frame phone-frame--small">
-            <div class="phone-screen">
-              <div class="phone-top">
-                <span>9:41</span>
-                <strong>A</strong>
-              </div>
-              <div class="phone-app">
-                <div>
-                  <h2>Administrador general</h2>
-                  <p>Gestiona solicitudes, negocios y estadisticas de la plataforma.</p>
-                </div>
-                <div class="phone-tabs">
-                  <span class="is-active">Solicitudes</span>
-                  <span>Negocios</span>
-                  <span>Reportes</span>
-                </div>
-                <div class="mini-request">
-                  <div class="mini-logo">CC</div>
-                  <div>
-                    <span class="badge">Solicitud pendiente</span>
-                    <h3>Cafe Central</h3>
-                    <p>Cafeteria · Santiago</p>
-                    <div class="mini-actions">
-                      <span class="mini-button mini-button--ok">Aprobar</span>
-                      <span class="mini-button mini-button--bad">Rechazar</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="mini-stats">
-                  <div class="mini-stat"><span>Negocios activos</span><strong data-stat="active_businesses">0</strong></div>
-                  <div class="mini-stat"><span>Solicitudes pendientes</span><strong data-stat="pending_requests">0</strong></div>
-                  <div class="mini-stat"><span>Clientes</span><strong data-stat="total_customers">0</strong></div>
-                </div>
-                <div class="mini-info">
-                  <strong>Aprobacion segura</strong>
-                  <p>Solo los negocios aprobados pueden iniciar sesion.</p>
-                </div>
-              </div>
+        <article class="panel-card">
+          <h2>Crecimiento de clientes</h2>
+          <div class="empty-state">
+            <div>
+              <i data-lucide="bar-chart-3"></i>
+              <h3>Sin datos suficientes</h3>
+              <p>El grafico se llenara cuando existan clientes y transacciones reales.</p>
             </div>
           </div>
         </article>
 
         <article class="panel-card">
-          <h2>Flujo activo</h2>
-          <ul class="route-list">
-            <li><span>1. Solicitud del negocio</span><strong>REQUESTS</strong></li>
-            <li><span>2. Aprobacion del admin</span><strong>BUSINESSES</strong></li>
-            <li><span>3. Usuario propietario</span><strong>USERS</strong></li>
-            <li><span>4. Programa inicial</span><strong>LOYALTY</strong></li>
-          </ul>
+          <h2>Solicitudes recientes</h2>
+          <div class="empty-state">
+            <div>
+              <i data-lucide="inbox"></i>
+              <h3>Revisa solicitudes</h3>
+              <p>Las solicitudes reales se gestionan desde el modulo Solicitudes.</p>
+              <div class="panel-actions">
+                <a class="button button--primary" href="solicitudes.html">Ver solicitudes</a>
+              </div>
+            </div>
+          </div>
         </article>
       </section>
     </main>

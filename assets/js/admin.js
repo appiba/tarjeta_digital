@@ -63,7 +63,7 @@
       return;
     }
 
-    container.innerHTML = '<p>Cargando solicitudes...</p>';
+    container.innerHTML = renderSkeletonList(3);
 
     try {
       var result = await AppAPI.apiRequest('getRequests', {});
@@ -75,7 +75,8 @@
       var requests = result.data.requests || [];
 
       if (requests.length === 0) {
-        container.innerHTML = '<article class="panel-card"><h2>Sin solicitudes</h2><p>Cuando un negocio envie una solicitud aparecera aqui.</p></article>';
+        container.innerHTML = renderEmptyState('inbox', 'Sin solicitudes', 'Cuando un negocio envie una solicitud aparecera aqui.');
+        AppUtils.mountIcons();
         return;
       }
 
@@ -103,7 +104,7 @@
     return '<article class="request-card">' +
       '<div class="request-card__main">' +
         '<div>' +
-          '<span class="badge">' + escapeHtml(request.status) + '</span>' +
+          '<span class="badge" data-status="' + escapeAttr(request.status) + '">' + escapeHtml(statusLabel(request.status)) + '</span>' +
           '<h2>' + escapeHtml(request.business_name) + '</h2>' +
           '<p>' + escapeHtml(request.business_type || 'Negocio') + ' en ' + escapeHtml(request.city || 'sin ciudad') + '</p>' +
         '</div>' +
@@ -265,7 +266,7 @@
       return;
     }
 
-    container.innerHTML = '<p>Cargando negocios...</p>';
+    container.innerHTML = renderSkeletonList(3);
 
     try {
       var result = await AppAPI.apiRequest('listBusinesses', {});
@@ -277,7 +278,8 @@
       var businesses = result.data.businesses || [];
 
       if (businesses.length === 0) {
-        container.innerHTML = '<article class="panel-card"><h2>Aun no hay negocios</h2><p>Aprueba una solicitud para crear el primer negocio.</p></article>';
+        container.innerHTML = renderEmptyState('store', 'Aun no hay negocios', 'Aprueba una solicitud para crear el primer negocio.');
+        AppUtils.mountIcons();
         return;
       }
 
@@ -290,7 +292,7 @@
   function renderBusinessCard(business) {
     return '<article class="request-card">' +
       '<div class="request-card__main">' +
-        '<div><span class="badge">' + escapeHtml(business.status) + '</span><h2>' + escapeHtml(business.business_name) + '</h2><p>' + escapeHtml(business.business_type || '') + '</p></div>' +
+        '<div><span class="badge" data-status="' + escapeAttr(business.status) + '">' + escapeHtml(statusLabel(business.status)) + '</span><h2>' + escapeHtml(business.business_name) + '</h2><p>' + escapeHtml(business.business_type || '') + '</p></div>' +
         '<strong class="business-code">' + escapeHtml(business.business_code) + '</strong>' +
       '</div>' +
       '<dl class="request-card__details">' +
@@ -308,6 +310,48 @@
     if (node) {
       node.textContent = value === undefined || value === null ? '0' : String(value);
     }
+  }
+
+  function renderSkeletonList(count) {
+    var html = '<div class="loader-list">';
+
+    for (var index = 0; index < count; index += 1) {
+      html += '<div class="skeleton"></div>';
+    }
+
+    return html + '</div>';
+  }
+
+  function renderEmptyState(icon, title, message) {
+    return '<article class="empty-state">' +
+      '<div><i data-lucide="' + escapeAttr(icon) + '"></i><h2>' + escapeHtml(title) + '</h2><p>' + escapeHtml(message) + '</p></div>' +
+      '</article>';
+  }
+
+  function statusLabel(status) {
+    var value = String(status || '').toLowerCase();
+
+    if (value === 'pending') {
+      return 'Pendiente';
+    }
+
+    if (value === 'approved') {
+      return 'Aprobada';
+    }
+
+    if (value === 'rejected') {
+      return 'Rechazada';
+    }
+
+    if (value === 'active') {
+      return 'Activo';
+    }
+
+    if (value === 'suspended') {
+      return 'Suspendido';
+    }
+
+    return status || '';
   }
 
   function escapeHtml(value) {

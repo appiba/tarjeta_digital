@@ -16,6 +16,7 @@
         <a href="solicitudes.html"><i data-lucide="inbox"></i>Solicitudes</a>
         <a href="negocios.html"><i data-lucide="store"></i>Negocios</a>
         <a class="is-active" href="clientes.html"><i data-lucide="users"></i>Clientes</a>
+        <a href="transacciones.html"><i data-lucide="receipt-text"></i>Transacciones</a>
         <a href="reportes.html"><i data-lucide="bar-chart-3"></i>Reportes</a>
         <a href="configuracion.html"><i data-lucide="settings"></i>Configuracion</a>
         <button type="button" data-logout><i data-lucide="log-out"></i>Cerrar sesion</button>
@@ -30,9 +31,12 @@
         </div>
         <div class="user-chip"><span data-user-name>Usuario</span></div>
       </section>
-      <section class="panel-card">
-        <h2>Aun no hay clientes</h2>
-        <p>La consulta global se implementara despues del registro de clientes.</p>
+      <section class="empty-state">
+        <div>
+          <i data-lucide="users"></i>
+          <h2>Aun no hay clientes</h2>
+          <p>Cuando los negocios registren clientes reales, apareceran en esta vista global.</p>
+        </div>
       </section>
     </main>
   </div>

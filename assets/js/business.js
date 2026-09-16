@@ -58,6 +58,7 @@
     setText('[data-stat-transactions]', stats.transactions || 0);
     setText('[data-stat-promotions]', stats.promotions || 0);
     setText('[data-customer-link]', customerLink);
+    paintPreviewBeans(program.goal || 10);
 
     var customerInput = AppUtils.qs('[data-customer-link-input]');
     if (customerInput) {
@@ -78,11 +79,9 @@
   }
 
   function setText(selector, value) {
-    var node = AppUtils.qs(selector);
-
-    if (node) {
+    AppUtils.qsa(selector).forEach(function(node) {
       node.textContent = value === undefined || value === null ? '' : String(value);
-    }
+    });
   }
 
   function setThemeColor(name, value) {
@@ -111,6 +110,22 @@
     }
 
     return 'sellos';
+  }
+
+  function paintPreviewBeans(goal) {
+    var container = AppUtils.qs('[data-preview-beans]');
+    var total = Math.max(1, Math.min(20, parseInt(goal || '10', 10) || 10));
+    var html = '';
+
+    if (!container) {
+      return;
+    }
+
+    for (var index = 0; index < total; index += 1) {
+      html += '<span class="coffee-bean is-empty"></span>';
+    }
+
+    container.innerHTML = html;
   }
 
   function initials(value) {

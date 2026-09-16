@@ -31,9 +31,34 @@
         </div>
         <div class="user-chip"><span data-user-name>Usuario</span></div>
       </section>
-      <section class="panel-card">
-        <h2>Ficha del cliente</h2>
-        <p>Las acciones de sellos, visitas, puntos y canjes se implementaran en la Fase 5.</p>
+      <section class="section-grid">
+        <article class="scan-stage">
+          <div>
+            <h2>Escanear cliente</h2>
+            <p data-scanner-state>Preparando modulo...</p>
+            <div class="scan-frame" aria-label="Area de escaneo QR">
+              <i data-lucide="scan-line"></i>
+            </div>
+            <div class="panel-actions">
+              <button class="button button--ghost" type="button">Ingresar codigo manual</button>
+            </div>
+          </div>
+        </article>
+        <article class="panel-card">
+          <h2>Ficha del cliente</h2>
+          <p>Cuando se escanee una tarjeta, aqui apareceran las acciones disponibles.</p>
+          <div class="settings-list">
+            <div><span>Sellos</span><strong>0</strong></div>
+            <div><span>Puntos</span><strong>0</strong></div>
+            <div><span>Visitas</span><strong>0</strong></div>
+          </div>
+          <div class="client-action-grid" style="margin-top:16px;">
+            <button class="button button--primary" type="button" disabled>+1 Sello</button>
+            <button class="button button--ghost" type="button" disabled>+1 Visita</button>
+            <button class="button button--ghost" type="button" disabled>Agregar puntos</button>
+            <button class="button button--warning" type="button" disabled>Canjear premio</button>
+          </div>
+        </article>
       </section>
     </main>
   </div>

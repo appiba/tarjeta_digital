@@ -5,34 +5,47 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Registro | Loyalty</title>
   <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/client.css">
 </head>
 <body data-root="../">
-  <main class="auth-layout">
-    <section class="auth-card">
-      <a class="brand" href="../index.html">
-        <span class="brand__mark">L</span>
-        <span>Loyalty</span>
-      </a>
-      <h1 style="margin-top: 22px;">Crear mi tarjeta</h1>
-      <p data-register-state>Validando negocio...</p>
-      <form class="form" data-register-customer-form hidden>
-        <div class="field">
-          <label for="full_name">Nombre completo</label>
-          <input id="full_name" name="full_name" type="text" autocomplete="name" required>
+  <main class="client-shell">
+    <section class="client-screen">
+      <div class="client-hero-register">
+        <div class="client-hero-register__cover">
+          <div>
+            <div class="loyalty-preview__logo" data-register-initials>L</div>
+            <h1 data-register-business>Loyalty</h1>
+            <p data-register-type>Clientes mas cerca</p>
+          </div>
         </div>
-        <div class="field">
-          <label for="phone">WhatsApp</label>
-          <input id="phone" name="phone" type="tel" autocomplete="tel" required>
+        <div class="client-hero-register__body">
+          <div class="benefit-card">
+            <p data-register-state>Validando negocio...</p>
+            <div class="benefit-row"><i data-lucide="badge-check"></i><span>Acumula sellos</span></div>
+            <div class="benefit-row"><i data-lucide="gift"></i><span>Obten premios</span></div>
+            <div class="benefit-row"><i data-lucide="megaphone"></i><span>Promociones exclusivas</span></div>
+            <form class="form" data-register-customer-form hidden>
+              <div class="field">
+                <label for="full_name">Nombre completo</label>
+                <input id="full_name" name="full_name" type="text" autocomplete="name" required>
+              </div>
+              <div class="field">
+                <label for="phone">WhatsApp</label>
+                <input id="phone" name="phone" type="tel" autocomplete="tel" required>
+              </div>
+              <div class="field">
+                <label for="email">Correo</label>
+                <input id="email" name="email" type="email" autocomplete="email">
+              </div>
+              <button class="button button--primary" type="submit">Crear mi tarjeta</button>
+            </form>
+          </div>
         </div>
-        <div class="field">
-          <label for="email">Correo</label>
-          <input id="email" name="email" type="email" autocomplete="email">
-        </div>
-        <button class="button button--primary" type="submit">Crear tarjeta</button>
-      </form>
+      </div>
       <section class="panel-card" data-register-result hidden></section>
     </section>
   </main>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../assets/js/utils.js"></script>
   <script src="../assets/js/api.js"></script>
   <script src="../assets/js/register.js"></script>

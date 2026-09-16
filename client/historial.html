@@ -8,7 +8,12 @@
   <link rel="stylesheet" href="../assets/css/client.css">
 </head>
 <body data-root="../">
-  <main class="page" style="padding-bottom: 96px;">
+  <main class="client-page">
+    <section class="mobile-topbar">
+      <a href="index.html" aria-label="Volver"><i data-lucide="chevron-left"></i></a>
+      <strong>Historial</strong>
+      <span></span>
+    </section>
     <section class="panel-heading">
       <div>
         <span class="badge">Cliente</span>
@@ -16,19 +21,23 @@
         <p>Movimientos de la tarjeta seleccionada.</p>
       </div>
     </section>
-    <section class="panel-card">
-      <h2>Sin movimientos</h2>
-      <p>Las transacciones apareceran despues de registrar sellos, visitas o puntos.</p>
+    <section class="empty-state">
+      <div>
+        <i data-lucide="clock-3"></i>
+        <h2>Sin movimientos</h2>
+        <p>Las transacciones apareceran despues de registrar sellos, visitas o puntos.</p>
+      </div>
     </section>
   </main>
   <nav class="bottom-nav" aria-label="Cliente">
-    <a href="index.html">Tarjeta</a>
-    <a class="is-active" href="historial.html">Historial</a>
-    <a href="promociones.html">Promos</a>
-    <a href="perfil.html">Perfil</a>
+    <a href="index.html"><i data-lucide="badge"></i>Tarjeta</a>
+    <a href="promociones.html"><i data-lucide="megaphone"></i>Promos</a>
+    <a class="is-active" href="historial.html"><i data-lucide="clock-3"></i>Historial</a>
+    <a href="perfil.html"><i data-lucide="user"></i>Perfil</a>
   </nav>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../assets/js/utils.js"></script>
   <script src="../assets/js/client.js"></script>
-  <script>ClientApp.init();</script>
+  <script>ClientApp.initPage('history');</script>
 </body>
 </html>

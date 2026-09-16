@@ -1,5 +1,6 @@
 (function() {
   function init() {
+    preserveCardInNavigation();
     AppUtils.mountIcons();
   }
 
@@ -23,6 +24,35 @@
       }
 
       paintCard(result.data);
+      preserveCardInNavigation();
+    } catch (error) {
+      AppUtils.toast(error.message, 'error');
+    }
+  }
+
+  async function initPage(pageName) {
+    init();
+
+    if (pageName !== 'profile') {
+      return;
+    }
+
+    var cardId = getCardId();
+
+    if (!cardId) {
+      return;
+    }
+
+    try {
+      var result = await AppAPI.apiRequest('getPublicCard', {
+        card_id: cardId
+      });
+
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudo cargar el perfil.');
+      }
+
+      paintProfile(result.data);
     } catch (error) {
       AppUtils.toast(error.message, 'error');
     }
@@ -52,6 +82,19 @@
     AppUtils.mountIcons();
   }
 
+  function paintProfile(data) {
+    var customer = data.customer || {};
+    var business = data.business || {};
+
+    setThemeColor('--primary', business.primary_color || '#1f5eff');
+    setThemeColor('--secondary', business.secondary_color || '#12b981');
+    setText('[data-profile-initials]', initials(customer.full_name || 'Cliente'));
+    setText('[data-profile-name]', customer.full_name || 'Cliente');
+    setText('[data-profile-phone]', customer.phone || 'Sin WhatsApp');
+    setText('[data-profile-email]', customer.email || 'Sin correo');
+    setText('[data-profile-birthday]', customer.birthday || 'Sin fecha');
+  }
+
   function paintProgressBeans(current, goal) {
     var container = AppUtils.qs('[data-progress-beans]');
     var total = Math.max(1, Math.min(20, parseInt(goal || '10', 10) || 10));
@@ -75,11 +118,9 @@
   }
 
   function setText(selector, value) {
-    var node = AppUtils.qs(selector);
-
-    if (node) {
+    AppUtils.qsa(selector).forEach(function(node) {
       node.textContent = value === undefined || value === null ? '' : String(value);
-    }
+    });
   }
 
   function setThemeColor(name, value) {
@@ -110,8 +151,23 @@
       .join('') || 'L';
   }
 
+  function preserveCardInNavigation() {
+    var cardId = getCardId();
+
+    if (!cardId) {
+      return;
+    }
+
+    AppUtils.qsa('.bottom-nav a').forEach(function(link) {
+      var url = new URL(link.getAttribute('href'), window.location.href);
+      url.searchParams.set('card', cardId);
+      link.href = url.pathname.split('/').pop() + url.search;
+    });
+  }
+
   window.ClientApp = {
     init: init,
-    initCard: initCard
+    initCard: initCard,
+    initPage: initPage
   };
 })();

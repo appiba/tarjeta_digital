@@ -32,8 +32,22 @@
         <div class="user-chip"><span data-user-name>Usuario</span></div>
       </section>
       <section class="panel-card">
-        <h2>Aun no hay clientes</h2>
-        <p>La lista se activara despues del registro de clientes.</p>
+        <div class="field">
+          <label for="customer_search">Buscar clientes</label>
+          <input id="customer_search" type="search" placeholder="Nombre, WhatsApp, correo o tarjeta" disabled>
+        </div>
+        <div class="panel-actions">
+          <span class="badge">Activos</span>
+          <span class="badge">Con premio</span>
+          <span class="badge">Nuevos</span>
+        </div>
+      </section>
+      <section class="empty-state">
+        <div>
+          <i data-lucide="users"></i>
+          <h2>Aun no hay clientes</h2>
+          <p>La lista se llenara con clientes reales registrados desde el link publico del negocio.</p>
+        </div>
       </section>
     </main>
   </div>

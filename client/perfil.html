@@ -8,7 +8,12 @@
   <link rel="stylesheet" href="../assets/css/client.css">
 </head>
 <body data-root="../">
-  <main class="page" style="padding-bottom: 96px;">
+  <main class="client-page">
+    <section class="mobile-topbar">
+      <a href="index.html" aria-label="Volver"><i data-lucide="chevron-left"></i></a>
+      <strong>Mi perfil</strong>
+      <a href="#" aria-label="Editar"><i data-lucide="pencil"></i></a>
+    </section>
     <section class="panel-heading">
       <div>
         <span class="badge">Cliente</span>
@@ -17,18 +22,26 @@
       </div>
     </section>
     <section class="panel-card">
-      <h2>Datos no cargados</h2>
-      <p>El perfil se conectara con CUSTOMERS despues del registro de clientes.</p>
+      <div class="profile-avatar" data-profile-initials>C</div>
+      <div class="client-list">
+        <div class="profile-field"><span>Nombre</span><strong data-profile-name>Cliente</strong></div>
+        <div class="profile-field"><span>WhatsApp</span><strong data-profile-phone>Sin WhatsApp</strong></div>
+        <div class="profile-field"><span>Correo</span><strong data-profile-email>Sin correo</strong></div>
+        <div class="profile-field"><span>Cumpleanos</span><strong data-profile-birthday>Sin fecha</strong></div>
+      </div>
+      <div class="reward-strip" style="margin-top:16px;"><i data-lucide="gift"></i><strong>Mes de tu cumpleanos: tendras una sorpresa especial</strong></div>
     </section>
   </main>
   <nav class="bottom-nav" aria-label="Cliente">
-    <a href="index.html">Tarjeta</a>
-    <a href="historial.html">Historial</a>
-    <a href="promociones.html">Promos</a>
-    <a class="is-active" href="perfil.html">Perfil</a>
+    <a href="index.html"><i data-lucide="badge"></i>Tarjeta</a>
+    <a href="promociones.html"><i data-lucide="megaphone"></i>Promos</a>
+    <a href="historial.html"><i data-lucide="clock-3"></i>Historial</a>
+    <a class="is-active" href="perfil.html"><i data-lucide="user"></i>Perfil</a>
   </nav>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/api.js"></script>
   <script src="../assets/js/client.js"></script>
-  <script>ClientApp.init();</script>
+  <script>ClientApp.initPage('profile');</script>
 </body>
 </html>
