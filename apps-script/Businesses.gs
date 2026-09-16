@@ -194,6 +194,23 @@ function approveBusinessRequest_(context, data) {
     });
 
     var business = getBusinessById_(businessId);
+    var businessLoginUrl = buildBusinessLoginUrl_();
+    var customerRegisterUrl = buildCustomerRegisterUrl_(businessCode);
+    var whatsappMessage = buildApprovalMessage_(
+      request,
+      business,
+      temporaryPassword,
+      businessLoginUrl,
+      customerRegisterUrl
+    );
+    var emailResult = sendApprovalEmail_(
+      request,
+      business,
+      temporaryPassword,
+      businessLoginUrl,
+      customerRegisterUrl,
+      whatsappMessage
+    );
 
     return {
       business: publicBusiness_(business),
@@ -203,7 +220,13 @@ function approveBusinessRequest_(context, data) {
         email: request.email,
         temporary_password: temporaryPassword
       },
-      register_url: buildRegisterUrl_(businessCode)
+      business_login_url: businessLoginUrl,
+      customer_register_url: customerRegisterUrl,
+      register_url: customerRegisterUrl,
+      whatsapp_message: whatsappMessage,
+      whatsapp_url: buildWhatsAppUrl_(request.whatsapp || request.phone, whatsappMessage),
+      email_sent: emailResult.sent,
+      email_error: emailResult.error || ''
     };
   } finally {
     lock.releaseLock();
@@ -253,6 +276,35 @@ function listBusinesses_(context, data) {
   };
 }
 
+function getBusinessHome_(context) {
+  var business = getBusinessById_(context.user.business_id);
+
+  if (!business || business.status !== 'active') {
+    throw appError_('Negocio inactivo o no encontrado.', 'business_not_found');
+  }
+
+  var program = getActiveProgramForBusiness_(business.business_id);
+  var reward = program && program.reward_id ? findRowByValue_('REWARDS', 'reward_id', program.reward_id) : null;
+  var cards = findRowsByValue_('CUSTOMER_CARDS', 'business_id', business.business_id);
+  var promotions = findRowsByValue_('PROMOTIONS', 'business_id', business.business_id);
+  var transactions = findRowsByValue_('TRANSACTIONS', 'business_id', business.business_id);
+  var redemptions = findRowsByValue_('REDEMPTIONS', 'business_id', business.business_id);
+
+  return {
+    business: publicBusiness_(business),
+    program: publicProgram_(program),
+    reward: publicReward_(reward),
+    customer_register_url: buildCustomerRegisterUrl_(business.business_code),
+    customer_share_text: buildCustomerShareMessage_(business, buildCustomerRegisterUrl_(business.business_code)),
+    stats: {
+      customers: cards.length,
+      promotions: promotions.filter(function(row) { return row.status === 'active'; }).length,
+      transactions: transactions.length,
+      redeemed_rewards: redemptions.filter(function(row) { return row.status === 'redeemed'; }).length
+    }
+  };
+}
+
 function getAdminStats_(context) {
   var businesses = getAllRows_('BUSINESSES');
   var requests = getAllRows_('REQUESTS');
@@ -282,6 +334,20 @@ function generateUniqueBusinessCode_(businessName) {
 }
 
 function buildRegisterUrl_(businessCode) {
+  return buildCustomerRegisterUrl_(businessCode);
+}
+
+function buildBusinessLoginUrl_() {
+  var appUrl = getConfigValue_('APP_URL', '');
+
+  if (!appUrl) {
+    return '';
+  }
+
+  return appUrl.replace(/\/?$/, '/') + 'login.html';
+}
+
+function buildCustomerRegisterUrl_(businessCode) {
   var appUrl = getConfigValue_('APP_URL', '');
 
   if (!appUrl) {
@@ -289,6 +355,84 @@ function buildRegisterUrl_(businessCode) {
   }
 
   return appUrl.replace(/\/?$/, '/') + 'register/?business=' + encodeURIComponent(businessCode);
+}
+
+function buildClientCardUrl_(cardId) {
+  var appUrl = getConfigValue_('APP_URL', '');
+
+  if (!appUrl) {
+    return '';
+  }
+
+  return appUrl.replace(/\/?$/, '/') + 'client/?card=' + encodeURIComponent(cardId);
+}
+
+function buildApprovalMessage_(request, business, temporaryPassword, businessLoginUrl, customerRegisterUrl) {
+  return [
+    'Hola ' + request.owner_name + ', tu cuenta de ' + business.business_name + ' ya esta activa en Loyalty.',
+    '',
+    'Panel del negocio: ' + (businessLoginUrl || 'pendiente de configurar'),
+    'Correo: ' + request.email,
+    'Contrasena temporal: ' + temporaryPassword,
+    'Codigo del negocio: ' + business.business_code,
+    '',
+    'Link para clientes: ' + (customerRegisterUrl || 'pendiente de configurar'),
+    'Comparte ese link con tus clientes para que creen su tarjeta digital.'
+  ].join('\n');
+}
+
+function buildCustomerShareMessage_(business, customerRegisterUrl) {
+  return [
+    'Hola, ya puedes crear tu tarjeta digital de lealtad de ' + business.business_name + '.',
+    customerRegisterUrl || ''
+  ].join('\n').trim();
+}
+
+function buildWhatsAppUrl_(phone, message) {
+  var digits = normalizePhone_(phone).replace(/[^\d]/g, '');
+
+  if (!digits) {
+    return '';
+  }
+
+  return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(message);
+}
+
+function sendApprovalEmail_(request, business, temporaryPassword, businessLoginUrl, customerRegisterUrl, message) {
+  try {
+    MailApp.sendEmail({
+      to: request.email,
+      subject: 'Tu cuenta de Loyalty ya esta activa',
+      body: message,
+      htmlBody: '<p>Hola ' + emailHtml_(request.owner_name) + ',</p>' +
+        '<p>Tu cuenta de <strong>' + emailHtml_(business.business_name) + '</strong> ya esta activa.</p>' +
+        '<p><strong>Panel del negocio:</strong><br><a href="' + emailHtml_(businessLoginUrl) + '">' + emailHtml_(businessLoginUrl) + '</a></p>' +
+        '<p><strong>Correo:</strong> ' + emailHtml_(request.email) + '<br>' +
+        '<strong>Contrasena temporal:</strong> ' + emailHtml_(temporaryPassword) + '<br>' +
+        '<strong>Codigo del negocio:</strong> ' + emailHtml_(business.business_code) + '</p>' +
+        '<p><strong>Link para clientes:</strong><br><a href="' + emailHtml_(customerRegisterUrl) + '">' + emailHtml_(customerRegisterUrl) + '</a></p>' +
+        '<p>Comparte ese link con tus clientes para que creen su tarjeta digital.</p>'
+    });
+
+    return {
+      sent: true,
+      error: ''
+    };
+  } catch (error) {
+    return {
+      sent: false,
+      error: error && error.message ? error.message : 'No se pudo enviar el correo.'
+    };
+  }
+}
+
+function emailHtml_(value) {
+  return String(value === undefined || value === null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 function publicRequest_(request) {

@@ -16,23 +16,20 @@
           <strong>Mi tarjeta de lealtad</strong>
           <i data-lucide="settings"></i>
         </div>
-        <div class="coffee-card">
+        <div class="coffee-card" data-client-card>
           <div class="coffee-card__hero">
             <div>
-              <div class="loyalty-preview__logo">CC</div>
-              <h1>Cafe Central</h1>
-              <p>Buen cafe, mejores momentos</p>
+              <div class="loyalty-preview__logo" data-business-initials>L</div>
+              <h1 data-business-name>Loyalty</h1>
+              <p data-business-type>Tarjeta digital</p>
             </div>
           </div>
           <div class="coffee-card__body">
-            <strong>Hola, Patricio Nieto</strong>
-            <div><strong>7 de 10 sellos</strong> <span style="float:right;">70%</span></div>
-            <div class="coffee-beans">
-              <span class="coffee-bean"></span><span class="coffee-bean"></span><span class="coffee-bean"></span><span class="coffee-bean"></span><span class="coffee-bean"></span>
-              <span class="coffee-bean"></span><span class="coffee-bean"></span><span class="coffee-bean is-empty"></span><span class="coffee-bean is-empty"></span><span class="coffee-bean is-empty"></span>
-            </div>
-            <p>Te faltan 3 sellos para tu premio.</p>
-            <div class="reward-strip"><i data-lucide="gift"></i><strong>Premio: 1 cafe gratis</strong></div>
+            <strong>Hola, <span data-customer-name>Cliente</span></strong>
+            <div><strong data-progress-label>0 de 10 sellos</strong> <span style="float:right;" data-progress-percent>0%</span></div>
+            <div class="coffee-beans" data-progress-beans></div>
+            <p data-progress-left>Presenta esta tarjeta en el local.</p>
+            <div class="reward-strip"><i data-lucide="gift"></i><strong>Premio: <span data-reward-name>Premio especial</span></strong></div>
             <div class="visual-qr" aria-label="QR visual">
               <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
               <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
@@ -60,7 +57,8 @@
   </nav>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/api.js"></script>
   <script src="../assets/js/client.js"></script>
-  <script>ClientApp.init();</script>
+  <script>ClientApp.initCard();</script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'loyalty-platform-api-v5';
+const CACHE_NAME = 'loyalty-platform-api-v6';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -14,6 +14,7 @@ const STATIC_ASSETS = [
   './assets/js/admin.js',
   './assets/js/business.js',
   './assets/js/client.js',
+  './assets/js/register.js',
   './assets/js/request.js'
 ];
 

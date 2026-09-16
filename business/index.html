@@ -32,29 +32,38 @@
         <div class="user-chip"><span data-user-name>Usuario</span></div>
       </section>
       <section class="stats-grid">
-        <article class="stat-card"><span>Clientes</span><strong>0</strong></article>
-        <article class="stat-card"><span>Visitas</span><strong>0</strong></article>
-        <article class="stat-card"><span>Promociones</span><strong>0</strong></article>
+        <article class="stat-card"><span>Clientes</span><strong data-stat-customers>0</strong></article>
+        <article class="stat-card"><span>Transacciones</span><strong data-stat-transactions>0</strong></article>
+        <article class="stat-card"><span>Promociones</span><strong data-stat-promotions>0</strong></article>
       </section>
 
       <section class="business-dashboard-grid">
         <article class="panel-card brand-panel">
-          <div class="brand-panel__logo">CC</div>
+          <div class="brand-panel__logo" data-business-initials>L</div>
           <div>
             <span class="badge">Mi negocio</span>
-            <h2>Cafe Central</h2>
-            <p>Cafeteria de especialidad</p>
-            <strong class="business-code">CAFE-7X42</strong>
+            <h2 data-business-name>Mi negocio</h2>
+            <p data-business-type>Negocio local</p>
+            <strong class="business-code" data-business-code></strong>
           </div>
         </article>
 
         <article class="panel-card">
           <h2>Configuracion de lealtad</h2>
           <div class="settings-list">
-            <div><span>Color principal</span><strong><i class="swatch swatch--coffee"></i>#6F4E37</strong></div>
-            <div><span>Color secundario</span><strong><i class="swatch swatch--cream"></i>#F5E6D3</strong></div>
-            <div><span>Meta</span><strong>10 sellos</strong></div>
-            <div><span>Recompensa</span><strong>1 cafe gratis</strong></div>
+            <div><span>Programa</span><strong data-program-type>sellos</strong></div>
+            <div><span>Meta</span><strong><span data-program-goal>10</span></strong></div>
+            <div><span>Recompensa</span><strong data-reward-name>Premio especial</strong></div>
+          </div>
+        </article>
+
+        <article class="panel-card">
+          <h2>Link para clientes</h2>
+          <p data-customer-link>Cuando el negocio este activo aparecera aqui el enlace publico.</p>
+          <input class="share-input" type="text" data-customer-link-input readonly>
+          <div class="share-actions">
+            <button class="button button--ghost" type="button" data-copy-customer-link>Copiar link</button>
+            <a class="button button--primary" href="#" target="_blank" rel="noopener" data-share-whatsapp>Enviar por WhatsApp</a>
           </div>
         </article>
 
@@ -87,6 +96,6 @@
   <script src="../assets/js/api.js"></script>
   <script src="../assets/js/auth.js"></script>
   <script src="../assets/js/business.js"></script>
-  <script>BusinessApp.init('Inicio', ['business_owner']);</script>
+  <script>BusinessApp.initDashboard();</script>
 </body>
 </html>

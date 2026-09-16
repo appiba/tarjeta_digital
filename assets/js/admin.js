@@ -152,6 +152,7 @@
       }
 
       showApprovalResult(result.data);
+      openApprovalWhatsApp(result.data);
       AppUtils.toast('Negocio aprobado.', 'success');
       await loadRequests();
     } catch (error) {
@@ -194,6 +195,13 @@
       return;
     }
 
+    var businessLoginUrl = data.business_login_url || '';
+    var customerRegisterUrl = data.customer_register_url || data.register_url || '';
+    var emailStatus = data.email_sent ? 'Correo enviado' : 'Correo pendiente';
+    var whatsappButton = data.whatsapp_url ?
+      '<a class="button button--primary" href="' + escapeAttr(data.whatsapp_url) + '" target="_blank" rel="noopener">Abrir WhatsApp</a>' :
+      '';
+
     box.hidden = false;
     box.innerHTML = '<h2>Acceso creado</h2>' +
       '<p>Entrega estos datos al propietario del negocio. La contrasena temporal solo se muestra ahora.</p>' +
@@ -202,8 +210,46 @@
         '<li><span>Codigo</span><strong>' + escapeHtml(data.business.business_code) + '</strong></li>' +
         '<li><span>Correo</span><strong>' + escapeHtml(data.owner.email) + '</strong></li>' +
         '<li><span>Contrasena temporal</span><strong>' + escapeHtml(data.owner.temporary_password) + '</strong></li>' +
-        '<li><span>Registro clientes</span><strong>' + escapeHtml(data.register_url || 'Configura APP_URL') + '</strong></li>' +
-      '</ul>';
+        '<li><span>Panel negocio</span><strong>' + escapeHtml(businessLoginUrl || 'Configura APP_URL') + '</strong></li>' +
+        '<li><span>Link clientes</span><strong>' + escapeHtml(customerRegisterUrl || 'Configura APP_URL') + '</strong></li>' +
+        '<li><span>Correo automatico</span><strong>' + escapeHtml(emailStatus) + '</strong></li>' +
+      '</ul>' +
+      '<div class="approval-actions">' +
+        whatsappButton +
+        '<button class="button button--ghost" type="button" data-copy-approval>Copiar mensaje</button>' +
+      '</div>';
+
+    var copyButton = AppUtils.qs('[data-copy-approval]', box);
+    if (copyButton) {
+      copyButton.addEventListener('click', function() {
+        copyToClipboard(data.whatsapp_message || buildApprovalText(data));
+      });
+    }
+  }
+
+  function openApprovalWhatsApp(data) {
+    if (data && data.whatsapp_url) {
+      window.open(data.whatsapp_url, '_blank', 'noopener');
+    }
+  }
+
+  async function copyToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      AppUtils.toast('Mensaje copiado.', 'success');
+    } catch (error) {
+      window.prompt('Copia este mensaje', text);
+    }
+  }
+
+  function buildApprovalText(data) {
+    return [
+      'Cuenta activa en Loyalty',
+      'Panel: ' + (data.business_login_url || ''),
+      'Correo: ' + (data.owner && data.owner.email ? data.owner.email : ''),
+      'Contrasena temporal: ' + (data.owner && data.owner.temporary_password ? data.owner.temporary_password : ''),
+      'Link clientes: ' + (data.customer_register_url || data.register_url || '')
+    ].join('\n');
   }
 
   async function initBusinesses() {

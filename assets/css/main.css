@@ -303,8 +303,8 @@ img {
   place-items: center;
   padding: 22px;
   background:
-    linear-gradient(135deg, rgba(77, 50, 34, 0.94), rgba(137, 97, 61, 0.82)),
-    #6f4e37;
+    linear-gradient(135deg, color-mix(in srgb, var(--primary), #111827 28%), color-mix(in srgb, var(--secondary), var(--primary) 50%)),
+    var(--primary);
   color: #ffffff;
   text-align: center;
 }
@@ -323,9 +323,9 @@ img {
 
 .coffee-bean {
   aspect-ratio: 1;
-  border: 1px solid #8b5e3c;
+  border: 1px solid var(--primary);
   border-radius: 999px;
-  background: #8b5e3c;
+  background: var(--primary);
 }
 
 .coffee-bean.is-empty {
@@ -694,6 +694,20 @@ img {
   border-radius: var(--radius);
   padding: 12px;
   background: #ffffff;
+}
+
+.route-list strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.approval-actions,
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .badge {

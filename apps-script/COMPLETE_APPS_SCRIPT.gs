@@ -67,6 +67,12 @@ function routeAction_(request) {
       return getCurrentUser_(requireSession_(request.token));
     case 'registerBusiness':
       return registerBusinessRequest_(request.data);
+    case 'getPublicBusiness':
+      return getPublicBusiness_(request.data);
+    case 'registerCustomer':
+      return registerCustomer_(request.data);
+    case 'getPublicCard':
+      return getPublicCard_(request.data);
     case 'getAdminStats':
       return getAdminStats_(requireSession_(request.token, ['super_admin']));
     case 'getPendingRequests':
@@ -79,6 +85,8 @@ function routeAction_(request) {
       return rejectBusinessRequest_(requireSession_(request.token, ['super_admin']), request.data);
     case 'listBusinesses':
       return listBusinesses_(requireSession_(request.token, ['super_admin']), request.data);
+    case 'getBusinessHome':
+      return getBusinessHome_(requireSession_(request.token, ['business_owner', 'staff']));
     default:
       throw appError_('Accion no implementada: ' + request.action, 'not_implemented');
   }
@@ -101,7 +109,6 @@ function jsonResponse_(payload) {
     .createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
 }
-
 
 // ==================================================
 // Security.gs
@@ -208,7 +215,6 @@ function constantTimeEquals_(left, right) {
 
   return difference === 0;
 }
-
 
 // ==================================================
 // Utils.gs
@@ -737,7 +743,6 @@ function logServerError_(error) {
   console.error(error && error.stack ? error.stack : error);
 }
 
-
 // ==================================================
 // Auth.gs
 // ==================================================
@@ -926,7 +931,6 @@ function publicSession_(session) {
     status: session.status
   };
 }
-
 
 // ==================================================
 // Businesses.gs
@@ -1127,6 +1131,23 @@ function approveBusinessRequest_(context, data) {
     });
 
     var business = getBusinessById_(businessId);
+    var businessLoginUrl = buildBusinessLoginUrl_();
+    var customerRegisterUrl = buildCustomerRegisterUrl_(businessCode);
+    var whatsappMessage = buildApprovalMessage_(
+      request,
+      business,
+      temporaryPassword,
+      businessLoginUrl,
+      customerRegisterUrl
+    );
+    var emailResult = sendApprovalEmail_(
+      request,
+      business,
+      temporaryPassword,
+      businessLoginUrl,
+      customerRegisterUrl,
+      whatsappMessage
+    );
 
     return {
       business: publicBusiness_(business),
@@ -1136,7 +1157,13 @@ function approveBusinessRequest_(context, data) {
         email: request.email,
         temporary_password: temporaryPassword
       },
-      register_url: buildRegisterUrl_(businessCode)
+      business_login_url: businessLoginUrl,
+      customer_register_url: customerRegisterUrl,
+      register_url: customerRegisterUrl,
+      whatsapp_message: whatsappMessage,
+      whatsapp_url: buildWhatsAppUrl_(request.whatsapp || request.phone, whatsappMessage),
+      email_sent: emailResult.sent,
+      email_error: emailResult.error || ''
     };
   } finally {
     lock.releaseLock();
@@ -1186,6 +1213,35 @@ function listBusinesses_(context, data) {
   };
 }
 
+function getBusinessHome_(context) {
+  var business = getBusinessById_(context.user.business_id);
+
+  if (!business || business.status !== 'active') {
+    throw appError_('Negocio inactivo o no encontrado.', 'business_not_found');
+  }
+
+  var program = getActiveProgramForBusiness_(business.business_id);
+  var reward = program && program.reward_id ? findRowByValue_('REWARDS', 'reward_id', program.reward_id) : null;
+  var cards = findRowsByValue_('CUSTOMER_CARDS', 'business_id', business.business_id);
+  var promotions = findRowsByValue_('PROMOTIONS', 'business_id', business.business_id);
+  var transactions = findRowsByValue_('TRANSACTIONS', 'business_id', business.business_id);
+  var redemptions = findRowsByValue_('REDEMPTIONS', 'business_id', business.business_id);
+
+  return {
+    business: publicBusiness_(business),
+    program: publicProgram_(program),
+    reward: publicReward_(reward),
+    customer_register_url: buildCustomerRegisterUrl_(business.business_code),
+    customer_share_text: buildCustomerShareMessage_(business, buildCustomerRegisterUrl_(business.business_code)),
+    stats: {
+      customers: cards.length,
+      promotions: promotions.filter(function(row) { return row.status === 'active'; }).length,
+      transactions: transactions.length,
+      redeemed_rewards: redemptions.filter(function(row) { return row.status === 'redeemed'; }).length
+    }
+  };
+}
+
 function getAdminStats_(context) {
   var businesses = getAllRows_('BUSINESSES');
   var requests = getAllRows_('REQUESTS');
@@ -1215,6 +1271,20 @@ function generateUniqueBusinessCode_(businessName) {
 }
 
 function buildRegisterUrl_(businessCode) {
+  return buildCustomerRegisterUrl_(businessCode);
+}
+
+function buildBusinessLoginUrl_() {
+  var appUrl = getConfigValue_('APP_URL', '');
+
+  if (!appUrl) {
+    return '';
+  }
+
+  return appUrl.replace(/\/?$/, '/') + 'login.html';
+}
+
+function buildCustomerRegisterUrl_(businessCode) {
   var appUrl = getConfigValue_('APP_URL', '');
 
   if (!appUrl) {
@@ -1222,6 +1292,84 @@ function buildRegisterUrl_(businessCode) {
   }
 
   return appUrl.replace(/\/?$/, '/') + 'register/?business=' + encodeURIComponent(businessCode);
+}
+
+function buildClientCardUrl_(cardId) {
+  var appUrl = getConfigValue_('APP_URL', '');
+
+  if (!appUrl) {
+    return '';
+  }
+
+  return appUrl.replace(/\/?$/, '/') + 'client/?card=' + encodeURIComponent(cardId);
+}
+
+function buildApprovalMessage_(request, business, temporaryPassword, businessLoginUrl, customerRegisterUrl) {
+  return [
+    'Hola ' + request.owner_name + ', tu cuenta de ' + business.business_name + ' ya esta activa en Loyalty.',
+    '',
+    'Panel del negocio: ' + (businessLoginUrl || 'pendiente de configurar'),
+    'Correo: ' + request.email,
+    'Contrasena temporal: ' + temporaryPassword,
+    'Codigo del negocio: ' + business.business_code,
+    '',
+    'Link para clientes: ' + (customerRegisterUrl || 'pendiente de configurar'),
+    'Comparte ese link con tus clientes para que creen su tarjeta digital.'
+  ].join('\n');
+}
+
+function buildCustomerShareMessage_(business, customerRegisterUrl) {
+  return [
+    'Hola, ya puedes crear tu tarjeta digital de lealtad de ' + business.business_name + '.',
+    customerRegisterUrl || ''
+  ].join('\n').trim();
+}
+
+function buildWhatsAppUrl_(phone, message) {
+  var digits = normalizePhone_(phone).replace(/[^\d]/g, '');
+
+  if (!digits) {
+    return '';
+  }
+
+  return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(message);
+}
+
+function sendApprovalEmail_(request, business, temporaryPassword, businessLoginUrl, customerRegisterUrl, message) {
+  try {
+    MailApp.sendEmail({
+      to: request.email,
+      subject: 'Tu cuenta de Loyalty ya esta activa',
+      body: message,
+      htmlBody: '<p>Hola ' + emailHtml_(request.owner_name) + ',</p>' +
+        '<p>Tu cuenta de <strong>' + emailHtml_(business.business_name) + '</strong> ya esta activa.</p>' +
+        '<p><strong>Panel del negocio:</strong><br><a href="' + emailHtml_(businessLoginUrl) + '">' + emailHtml_(businessLoginUrl) + '</a></p>' +
+        '<p><strong>Correo:</strong> ' + emailHtml_(request.email) + '<br>' +
+        '<strong>Contrasena temporal:</strong> ' + emailHtml_(temporaryPassword) + '<br>' +
+        '<strong>Codigo del negocio:</strong> ' + emailHtml_(business.business_code) + '</p>' +
+        '<p><strong>Link para clientes:</strong><br><a href="' + emailHtml_(customerRegisterUrl) + '">' + emailHtml_(customerRegisterUrl) + '</a></p>' +
+        '<p>Comparte ese link con tus clientes para que creen su tarjeta digital.</p>'
+    });
+
+    return {
+      sent: true,
+      error: ''
+    };
+  } catch (error) {
+    return {
+      sent: false,
+      error: error && error.message ? error.message : 'No se pudo enviar el correo.'
+    };
+  }
+}
+
+function emailHtml_(value) {
+  return String(value === undefined || value === null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 function publicRequest_(request) {
@@ -1272,7 +1420,6 @@ function publicBusiness_(business) {
   };
 }
 
-
 // ==================================================
 // Customers.gs
 // ==================================================
@@ -1288,6 +1435,223 @@ function getCustomerCardById_(cardId) {
   return findRowByValue_('CUSTOMER_CARDS', 'card_id', cardId);
 }
 
+function getCustomerCardForBusiness_(customerId, businessId) {
+  var cards = findRowsByValue_('CUSTOMER_CARDS', 'customer_id', customerId);
+
+  for (var index = 0; index < cards.length; index += 1) {
+    if (cards[index].business_id === businessId) {
+      return cards[index];
+    }
+  }
+
+  return null;
+}
+
+function getPublicBusiness_(data) {
+  requireFields_(data, ['business_code']);
+
+  var business = getBusinessByCode_(data.business_code);
+
+  if (!business || business.status !== 'active') {
+    throw appError_('Negocio no encontrado o inactivo.', 'business_not_found');
+  }
+
+  var program = getActiveProgramForBusiness_(business.business_id);
+  var reward = program && program.reward_id ? findRowByValue_('REWARDS', 'reward_id', program.reward_id) : null;
+
+  return {
+    business: publicBusiness_(business),
+    program: publicProgram_(program),
+    reward: publicReward_(reward),
+    customer_register_url: buildCustomerRegisterUrl_(business.business_code)
+  };
+}
+
+function registerCustomer_(data) {
+  requireFields_(data, ['business_code', 'full_name', 'phone']);
+
+  var business = getBusinessByCode_(data.business_code);
+
+  if (!business || business.status !== 'active') {
+    throw appError_('Negocio no encontrado o inactivo.', 'business_not_found');
+  }
+
+  var program = getActiveProgramForBusiness_(business.business_id);
+
+  if (!program) {
+    throw appError_('Este negocio aun no tiene programa activo.', 'program_not_found');
+  }
+
+  var phone = normalizeCustomerPhone_(data.phone);
+  var timestamp = nowIso_();
+  var customer = getCustomerByPhone_(phone);
+
+  if (!customer) {
+    var customerId = generateId_('CUS');
+
+    appendObject_('CUSTOMERS', {
+      customer_id: customerId,
+      full_name: sanitizeText_(data.full_name, 140),
+      phone: phone,
+      email: normalizeEmail_(data.email || ''),
+      birthday: sanitizeText_(data.birthday || '', 40),
+      created_at: timestamp,
+      status: 'active'
+    });
+
+    customer = findRowByValue_('CUSTOMERS', 'customer_id', customerId);
+  } else {
+    updateRowByNumber_('CUSTOMERS', customer._rowNumber, {
+      full_name: sanitizeText_(data.full_name || customer.full_name, 140),
+      email: normalizeEmail_(data.email || customer.email || ''),
+      birthday: sanitizeText_(data.birthday || customer.birthday || '', 40),
+      status: 'active'
+    });
+    customer = findRowByValue_('CUSTOMERS', 'customer_id', customer.customer_id);
+  }
+
+  var card = getCustomerCardForBusiness_(customer.customer_id, business.business_id);
+
+  if (!card) {
+    var cardId = generateId_('CRD');
+
+    appendObject_('CUSTOMER_CARDS', {
+      card_id: cardId,
+      customer_id: customer.customer_id,
+      business_id: business.business_id,
+      program_id: program.program_id,
+      points: 0,
+      stamps: 0,
+      visits: 0,
+      lifetime_points: 0,
+      status: 'active',
+      created_at: timestamp,
+      updated_at: timestamp
+    });
+
+    card = getCustomerCardById_(cardId);
+  }
+
+  var reward = program.reward_id ? findRowByValue_('REWARDS', 'reward_id', program.reward_id) : null;
+  var cardUrl = buildClientCardUrl_(card.card_id);
+
+  logActivity_('', business.business_id, 'customer_registered', 'customer_card', card.card_id, {
+    customer_id: customer.customer_id
+  });
+
+  return {
+    business: publicBusiness_(business),
+    customer: publicCustomer_(customer),
+    card: publicCustomerCard_(card, program),
+    program: publicProgram_(program),
+    reward: publicReward_(reward),
+    card_url: cardUrl
+  };
+}
+
+function getPublicCard_(data) {
+  requireFields_(data, ['card_id']);
+
+  var card = getCustomerCardById_(data.card_id);
+
+  if (!card || card.status !== 'active') {
+    throw appError_('Tarjeta no encontrada o inactiva.', 'card_not_found');
+  }
+
+  var business = getBusinessById_(card.business_id);
+  var customer = findRowByValue_('CUSTOMERS', 'customer_id', card.customer_id);
+  var program = findRowByValue_('LOYALTY_PROGRAMS', 'program_id', card.program_id);
+  var reward = program && program.reward_id ? findRowByValue_('REWARDS', 'reward_id', program.reward_id) : null;
+
+  if (!business || !customer || !program) {
+    throw appError_('La tarjeta esta incompleta.', 'card_incomplete');
+  }
+
+  return {
+    business: publicBusiness_(business),
+    customer: publicCustomer_(customer),
+    card: publicCustomerCard_(card, program),
+    program: publicProgram_(program),
+    reward: publicReward_(reward),
+    card_url: buildClientCardUrl_(card.card_id)
+  };
+}
+
+function publicCustomer_(customer) {
+  return {
+    customer_id: customer.customer_id,
+    full_name: customer.full_name,
+    phone: customer.phone || '',
+    email: customer.email || '',
+    birthday: customer.birthday || '',
+    status: customer.status || ''
+  };
+}
+
+function publicCustomerCard_(card, program) {
+  var programType = String(program && program.program_type ? program.program_type : 'STAMPS').toUpperCase();
+  var current = 0;
+
+  if (programType === 'POINTS') {
+    current = parseInt(card.points || '0', 10) || 0;
+  } else if (programType === 'VISITS') {
+    current = parseInt(card.visits || '0', 10) || 0;
+  } else {
+    current = parseInt(card.stamps || '0', 10) || 0;
+  }
+
+  var goal = parseInt(program && program.goal ? program.goal : '10', 10) || 10;
+
+  return {
+    card_id: card.card_id,
+    customer_id: card.customer_id,
+    business_id: card.business_id,
+    program_id: card.program_id,
+    points: parseInt(card.points || '0', 10) || 0,
+    stamps: parseInt(card.stamps || '0', 10) || 0,
+    visits: parseInt(card.visits || '0', 10) || 0,
+    lifetime_points: parseInt(card.lifetime_points || '0', 10) || 0,
+    status: card.status,
+    current: current,
+    goal: goal,
+    progress_percent: Math.min(100, Math.round((current / goal) * 100))
+  };
+}
+
+function publicProgram_(program) {
+  if (!program) {
+    return null;
+  }
+
+  return {
+    program_id: program.program_id,
+    business_id: program.business_id,
+    program_name: program.program_name,
+    program_type: program.program_type,
+    goal: parseInt(program.goal || '10', 10) || 10,
+    points_per_dollar: program.points_per_dollar || '',
+    reward_id: program.reward_id || '',
+    status: program.status || ''
+  };
+}
+
+function publicReward_(reward) {
+  if (!reward) {
+    return null;
+  }
+
+  return {
+    reward_id: reward.reward_id,
+    business_id: reward.business_id,
+    program_id: reward.program_id,
+    name: reward.name,
+    description: reward.description || '',
+    points_required: reward.points_required || '',
+    stamps_required: reward.stamps_required || '',
+    visits_required: reward.visits_required || '',
+    status: reward.status || ''
+  };
+}
 
 // ==================================================
 // Loyalty.gs
@@ -1312,7 +1676,6 @@ function assertSupportedProgramType_(programType) {
   }
 }
 
-
 // ==================================================
 // Promotions.gs
 // ==================================================
@@ -1335,7 +1698,6 @@ function isPromotionVisible_(promotion, now) {
 
   return true;
 }
-
 
 // ==================================================
 // Uploads.gs
@@ -1383,6 +1745,4 @@ function ensureChildFolder_(parentFolder, name) {
 
   return parentFolder.createFolder(name);
 }
-
-
 

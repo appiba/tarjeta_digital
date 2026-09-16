@@ -60,6 +60,12 @@ function routeAction_(request) {
       return getCurrentUser_(requireSession_(request.token));
     case 'registerBusiness':
       return registerBusinessRequest_(request.data);
+    case 'getPublicBusiness':
+      return getPublicBusiness_(request.data);
+    case 'registerCustomer':
+      return registerCustomer_(request.data);
+    case 'getPublicCard':
+      return getPublicCard_(request.data);
     case 'getAdminStats':
       return getAdminStats_(requireSession_(request.token, ['super_admin']));
     case 'getPendingRequests':
@@ -72,6 +78,8 @@ function routeAction_(request) {
       return rejectBusinessRequest_(requireSession_(request.token, ['super_admin']), request.data);
     case 'listBusinesses':
       return listBusinesses_(requireSession_(request.token, ['super_admin']), request.data);
+    case 'getBusinessHome':
+      return getBusinessHome_(requireSession_(request.token, ['business_owner', 'staff']));
     default:
       throw appError_('Accion no implementada: ' + request.action, 'not_implemented');
   }

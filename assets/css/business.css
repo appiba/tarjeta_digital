@@ -88,6 +88,18 @@
   margin-top: 14px;
 }
 
+.share-input {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0 12px;
+  color: var(--text);
+  background: #ffffff;
+  font: inherit;
+}
+
 @media (max-width: 1040px) {
   .business-dashboard-grid {
     grid-template-columns: 1fr;

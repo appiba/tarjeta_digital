@@ -60,7 +60,7 @@
 
     box.hidden = false;
     box.innerHTML = '<h2>Solicitud recibida</h2>' +
-      '<p>Tu solicitud quedo con estado <strong>' + escapeHtml(data.status) + '</strong>. El administrador revisara el negocio antes de activar el acceso.</p>' +
+      '<p>Tu solicitud quedo con estado <strong>' + escapeHtml(data.status) + '</strong>. Cuando el administrador la apruebe recibiras el acceso por correo y WhatsApp.</p>' +
       '<p><strong>ID:</strong> ' + escapeHtml(data.request_id) + '</p>';
   }
 
