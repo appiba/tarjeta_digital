@@ -85,6 +85,8 @@ function routeAction_(request) {
       return rejectBusinessRequest_(requireSession_(request.token, ['super_admin']), request.data);
     case 'listBusinesses':
       return listBusinesses_(requireSession_(request.token, ['super_admin']), request.data);
+    case 'resetBusinessOwnerPassword':
+      return resetBusinessOwnerPassword_(requireSession_(request.token, ['super_admin']), request.data);
     case 'getBusinessHome':
       return getBusinessHome_(requireSession_(request.token, ['business_owner', 'staff']));
     default:
@@ -333,6 +335,7 @@ var SHEET_SCHEMAS = Object.freeze({
     'business_name',
     'owner_name',
     'email',
+    'owner_password_hash',
     'phone',
     'whatsapp',
     'city',
@@ -956,11 +959,13 @@ function getBusinessByCode_(businessCode) {
 }
 
 function registerBusinessRequest_(data) {
-  requireFields_(data, ['business_name', 'owner_name', 'email', 'whatsapp', 'business_type']);
+  requireFields_(data, ['business_name', 'owner_name', 'email', 'owner_password', 'whatsapp', 'business_type']);
+  ensureSheet_(getSpreadsheet_(), 'REQUESTS', SHEET_SCHEMAS.REQUESTS);
 
   var email = normalizeEmail_(data.email);
   var whatsapp = normalizePhone_(data.whatsapp);
   var loyaltyType = String(data.loyalty_type || 'STAMPS').toUpperCase();
+  var ownerPasswordHash = createPasswordHash_(String(data.owner_password || ''));
   assertSupportedProgramType_(loyaltyType);
 
   if (findRowByValue_('USERS', 'email', email)) {
@@ -972,6 +977,13 @@ function registerBusinessRequest_(data) {
   });
 
   if (existingPending.length > 0) {
+    if (!existingPending[0].owner_password_hash) {
+      updateRowByNumber_('REQUESTS', existingPending[0]._rowNumber, {
+        owner_password_hash: ownerPasswordHash
+      });
+      existingPending[0].owner_password_hash = ownerPasswordHash;
+    }
+
     return publicRequest_(existingPending[0]);
   }
 
@@ -980,6 +992,7 @@ function registerBusinessRequest_(data) {
     business_name: sanitizeText_(data.business_name, 140),
     owner_name: sanitizeText_(data.owner_name, 140),
     email: email,
+    owner_password_hash: ownerPasswordHash,
     phone: normalizePhone_(data.phone || data.whatsapp),
     whatsapp: whatsapp,
     city: sanitizeText_(data.city, 100),
@@ -1028,6 +1041,7 @@ function getRequests_(context, data) {
 
 function approveBusinessRequest_(context, data) {
   requireFields_(data, ['request_id']);
+  ensureSheet_(getSpreadsheet_(), 'REQUESTS', SHEET_SCHEMAS.REQUESTS);
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -1053,7 +1067,9 @@ function approveBusinessRequest_(context, data) {
     var rewardId = generateId_('RWD');
     var businessCode = generateUniqueBusinessCode_(request.business_name);
     var slug = slugify_(request.business_name) + '-' + businessCode.split('-').pop().toLowerCase();
-    var temporaryPassword = generateTemporaryPassword_();
+    var hasOwnerPassword = Boolean(request.owner_password_hash);
+    var temporaryPassword = hasOwnerPassword ? '' : generateTemporaryPassword_();
+    var ownerPasswordHash = hasOwnerPassword ? request.owner_password_hash : createPasswordHash_(temporaryPassword);
     var timestamp = nowIso_();
 
     appendObject_('BUSINESSES', {
@@ -1083,7 +1099,7 @@ function approveBusinessRequest_(context, data) {
       full_name: request.owner_name,
       email: request.email,
       phone: request.phone || request.whatsapp || '',
-      password_hash: createPasswordHash_(temporaryPassword),
+      password_hash: ownerPasswordHash,
       role: 'business_owner',
       status: 'active',
       created_at: timestamp,
@@ -1137,6 +1153,7 @@ function approveBusinessRequest_(context, data) {
       request,
       business,
       temporaryPassword,
+      hasOwnerPassword,
       businessLoginUrl,
       customerRegisterUrl
     );
@@ -1144,6 +1161,7 @@ function approveBusinessRequest_(context, data) {
       request,
       business,
       temporaryPassword,
+      hasOwnerPassword,
       businessLoginUrl,
       customerRegisterUrl,
       whatsappMessage
@@ -1155,7 +1173,8 @@ function approveBusinessRequest_(context, data) {
         user_id: ownerUserId,
         full_name: request.owner_name,
         email: request.email,
-        temporary_password: temporaryPassword
+        temporary_password: temporaryPassword,
+        password_mode: hasOwnerPassword ? 'chosen' : 'temporary'
       },
       business_login_url: businessLoginUrl,
       customer_register_url: customerRegisterUrl,
@@ -1210,6 +1229,78 @@ function listBusinesses_(context, data) {
 
   return {
     businesses: rows.map(publicBusiness_)
+  };
+}
+
+function resetBusinessOwnerPassword_(context, data) {
+  requireFields_(data, ['business_id']);
+
+  var business = getBusinessById_(data.business_id);
+
+  if (!business) {
+    throw appError_('Negocio no encontrado.', 'business_not_found');
+  }
+
+  var owner = findRowByValue_('USERS', 'user_id', business.owner_user_id);
+
+  if (!owner) {
+    throw appError_('Propietario no encontrado.', 'owner_not_found');
+  }
+
+  var temporaryPassword = generateTemporaryPassword_();
+  var timestamp = nowIso_();
+
+  updateRowByNumber_('USERS', owner._rowNumber, {
+    password_hash: createPasswordHash_(temporaryPassword),
+    status: 'active'
+  });
+
+  var businessLoginUrl = buildBusinessLoginUrl_();
+  var customerRegisterUrl = buildCustomerRegisterUrl_(business.business_code);
+  var requestLike = {
+    owner_name: owner.full_name || business.business_name,
+    email: owner.email || business.email,
+    phone: owner.phone || business.phone || '',
+    whatsapp: business.whatsapp || owner.phone || ''
+  };
+  var whatsappMessage = buildApprovalMessage_(
+    requestLike,
+    business,
+    temporaryPassword,
+    false,
+    businessLoginUrl,
+    customerRegisterUrl
+  );
+  var emailResult = sendApprovalEmail_(
+    requestLike,
+    business,
+    temporaryPassword,
+    false,
+    businessLoginUrl,
+    customerRegisterUrl,
+    whatsappMessage
+  );
+
+  logActivity_(context.user.user_id, business.business_id, 'owner_password_reset', 'user', owner.user_id, {
+    reset_at: timestamp
+  });
+
+  return {
+    business: publicBusiness_(business),
+    owner: {
+      user_id: owner.user_id,
+      full_name: owner.full_name || business.business_name,
+      email: owner.email || business.email,
+      temporary_password: temporaryPassword,
+      password_mode: 'temporary'
+    },
+    business_login_url: businessLoginUrl,
+    customer_register_url: customerRegisterUrl,
+    register_url: customerRegisterUrl,
+    whatsapp_message: whatsappMessage,
+    whatsapp_url: buildWhatsAppUrl_(business.whatsapp || owner.phone || business.phone, whatsappMessage),
+    email_sent: emailResult.sent,
+    email_error: emailResult.error || ''
   };
 }
 
@@ -1304,13 +1395,17 @@ function buildClientCardUrl_(cardId) {
   return appUrl.replace(/\/?$/, '/') + 'client/?card=' + encodeURIComponent(cardId);
 }
 
-function buildApprovalMessage_(request, business, temporaryPassword, businessLoginUrl, customerRegisterUrl) {
+function buildApprovalMessage_(request, business, temporaryPassword, hasOwnerPassword, businessLoginUrl, customerRegisterUrl) {
+  var passwordLine = hasOwnerPassword ?
+    'Clave: usa la clave que creaste al enviar la solicitud.' :
+    'Contrasena temporal: ' + temporaryPassword;
+
   return [
     'Hola ' + request.owner_name + ', tu cuenta de ' + business.business_name + ' ya esta activa en Loyalty.',
     '',
     'Panel del negocio: ' + (businessLoginUrl || 'pendiente de configurar'),
     'Correo: ' + request.email,
-    'Contrasena temporal: ' + temporaryPassword,
+    passwordLine,
     'Codigo del negocio: ' + business.business_code,
     '',
     'Link para clientes: ' + (customerRegisterUrl || 'pendiente de configurar'),
@@ -1335,7 +1430,11 @@ function buildWhatsAppUrl_(phone, message) {
   return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(message);
 }
 
-function sendApprovalEmail_(request, business, temporaryPassword, businessLoginUrl, customerRegisterUrl, message) {
+function sendApprovalEmail_(request, business, temporaryPassword, hasOwnerPassword, businessLoginUrl, customerRegisterUrl, message) {
+  var passwordHtml = hasOwnerPassword ?
+    'Clave:</strong> usa la clave que creaste al enviar la solicitud.' :
+    'Contrasena temporal:</strong> ' + emailHtml_(temporaryPassword);
+
   try {
     MailApp.sendEmail({
       to: request.email,
@@ -1345,7 +1444,7 @@ function sendApprovalEmail_(request, business, temporaryPassword, businessLoginU
         '<p>Tu cuenta de <strong>' + emailHtml_(business.business_name) + '</strong> ya esta activa.</p>' +
         '<p><strong>Panel del negocio:</strong><br><a href="' + emailHtml_(businessLoginUrl) + '">' + emailHtml_(businessLoginUrl) + '</a></p>' +
         '<p><strong>Correo:</strong> ' + emailHtml_(request.email) + '<br>' +
-        '<strong>Contrasena temporal:</strong> ' + emailHtml_(temporaryPassword) + '<br>' +
+        '<strong>' + passwordHtml + '<br>' +
         '<strong>Codigo del negocio:</strong> ' + emailHtml_(business.business_code) + '</p>' +
         '<p><strong>Link para clientes:</strong><br><a href="' + emailHtml_(customerRegisterUrl) + '">' + emailHtml_(customerRegisterUrl) + '</a></p>' +
         '<p>Comparte ese link con tus clientes para que creen su tarjeta digital.</p>'
@@ -1378,6 +1477,7 @@ function publicRequest_(request) {
     business_name: request.business_name,
     owner_name: request.owner_name,
     email: request.email,
+    has_owner_password: Boolean(request.owner_password_hash),
     phone: request.phone || '',
     whatsapp: request.whatsapp || '',
     city: request.city || '',

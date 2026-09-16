@@ -16,6 +16,7 @@ Esta base implementa:
 - Panel de solicitudes en `admin/solicitudes.html`.
 - Aprobacion y rechazo de solicitudes.
 - Creacion automatica de negocio, usuario propietario, programa y recompensa inicial.
+- El propietario define su clave al enviar la solicitud y entra con esa misma clave cuando el admin aprueba.
 - Listado basico de negocios en `admin/negocios.html`.
 
 Las fases siguientes conectaran personalizacion del negocio, clientes, tarjetas, QR, scanner, transacciones, promociones y canjes.
@@ -212,7 +213,7 @@ Luego publica el repositorio con GitHub Pages desde la rama principal y la raiz 
 ## Probar Fase 2
 
 1. Abre `solicitud.html`.
-2. Envia una solicitud de negocio.
+2. Envia una solicitud de negocio, incluyendo la clave que usara el propietario para entrar al panel.
 3. Revisa la hoja `REQUESTS`: debe existir un registro `pending`.
 4. Entra como super admin a `admin/solicitudes.html`.
 5. Presiona `Aprobar`.
@@ -221,7 +222,7 @@ Luego publica el repositorio con GitHub Pages desde la rama principal y la raiz 
 ```text
 codigo del negocio
 correo del propietario
-contrasena temporal
+confirmacion de clave definida por el propietario
 enlace de registro para clientes
 ```
 
@@ -235,8 +236,10 @@ REWARDS
 ACTIVITY_LOG
 ```
 
-8. Cierra sesion e inicia sesion con el correo del propietario y la contrasena temporal.
+8. Cierra sesion e inicia sesion con el correo del propietario y la clave que escribio en la solicitud.
 9. Debe redirigir a `business/index.html`.
+
+Si un negocio aprobado no recuerda su clave, entra a `admin/negocios.html` y usa `Restablecer clave`. El sistema genera una clave temporal nueva, actualiza el usuario propietario y devuelve el mensaje para correo/WhatsApp.
 
 Para rechazo:
 
@@ -278,5 +281,5 @@ Los usuarios `business_owner` y `staff` se crearan automaticamente en fases post
 - [ ] Aprobar crea `USERS` con rol `business_owner`.
 - [ ] Aprobar crea `LOYALTY_PROGRAMS` y `REWARDS`.
 - [ ] Aprobar registra actividad en `ACTIVITY_LOG`.
-- [ ] El propietario puede iniciar sesion con la contrasena temporal.
+- [ ] El propietario puede iniciar sesion con la clave que creo en la solicitud.
 - [ ] Rechazar cambia `REQUESTS.status` a `rejected`.

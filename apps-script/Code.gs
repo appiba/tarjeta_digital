@@ -78,6 +78,8 @@ function routeAction_(request) {
       return rejectBusinessRequest_(requireSession_(request.token, ['super_admin']), request.data);
     case 'listBusinesses':
       return listBusinesses_(requireSession_(request.token, ['super_admin']), request.data);
+    case 'resetBusinessOwnerPassword':
+      return resetBusinessOwnerPassword_(requireSession_(request.token, ['super_admin']), request.data);
     case 'getBusinessHome':
       return getBusinessHome_(requireSession_(request.token, ['business_owner', 'staff']));
     default:

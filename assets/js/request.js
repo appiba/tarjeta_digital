@@ -16,6 +16,13 @@
 
       var button = form.querySelector('button[type="submit"]');
       var formData = new FormData(form);
+      var ownerPassword = String(formData.get('owner_password') || '');
+      var ownerPasswordConfirm = String(formData.get('owner_password_confirm') || '');
+
+      if (ownerPassword !== ownerPasswordConfirm) {
+        AppUtils.toast('Las claves no coinciden.', 'error');
+        return;
+      }
 
       AppUtils.setButtonLoading(button, true, 'Enviando...');
 
@@ -24,6 +31,7 @@
           business_name: formData.get('business_name'),
           owner_name: formData.get('owner_name'),
           email: formData.get('email'),
+          owner_password: ownerPassword,
           phone: formData.get('phone'),
           whatsapp: formData.get('whatsapp'),
           city: formData.get('city'),
@@ -60,7 +68,7 @@
 
     box.hidden = false;
     box.innerHTML = '<h2>Solicitud recibida</h2>' +
-      '<p>Tu solicitud quedo con estado <strong>' + escapeHtml(data.status) + '</strong>. Cuando el administrador la apruebe recibiras el acceso por correo y WhatsApp.</p>' +
+      '<p>Tu solicitud quedo con estado <strong>' + escapeHtml(data.status) + '</strong>. Cuando el administrador la apruebe podras entrar con tu correo y la clave que acabas de crear.</p>' +
       '<p><strong>ID:</strong> ' + escapeHtml(data.request_id) + '</p>';
   }
 

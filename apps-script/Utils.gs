@@ -112,6 +112,7 @@ var SHEET_SCHEMAS = Object.freeze({
     'business_name',
     'owner_name',
     'email',
+    'owner_password_hash',
     'phone',
     'whatsapp',
     'city',

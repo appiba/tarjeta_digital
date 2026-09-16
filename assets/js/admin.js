@@ -116,6 +116,7 @@
         '<div><dt>WhatsApp</dt><dd>' + escapeHtml(request.whatsapp) + '</dd></div>' +
         '<div><dt>Programa</dt><dd>' + escapeHtml(request.loyalty_type) + ' / meta ' + escapeHtml(request.suggested_goal) + '</dd></div>' +
         '<div><dt>Premio</dt><dd>' + escapeHtml(request.suggested_reward) + '</dd></div>' +
+        '<div><dt>Clave panel</dt><dd>' + escapeHtml(request.has_owner_password ? 'Definida por propietario' : 'Temporal al aprobar') + '</dd></div>' +
         '<div><dt>Fecha</dt><dd>' + escapeHtml(createdAt) + '</dd></div>' +
       '</dl>' +
       actions +
@@ -199,18 +200,23 @@
     var businessLoginUrl = data.business_login_url || '';
     var customerRegisterUrl = data.customer_register_url || data.register_url || '';
     var emailStatus = data.email_sent ? 'Correo enviado' : 'Correo pendiente';
+    var ownerPasswordMode = data.owner && data.owner.password_mode === 'chosen' ? 'chosen' : 'temporary';
+    var ownerPasswordLabel = ownerPasswordMode === 'chosen' ? 'Clave' : 'Contrasena temporal';
+    var ownerPasswordValue = ownerPasswordMode === 'chosen' ?
+      'Usa la clave que creo en la solicitud' :
+      (data.owner && data.owner.temporary_password ? data.owner.temporary_password : '');
     var whatsappButton = data.whatsapp_url ?
       '<a class="button button--primary" href="' + escapeAttr(data.whatsapp_url) + '" target="_blank" rel="noopener">Abrir WhatsApp</a>' :
       '';
 
     box.hidden = false;
     box.innerHTML = '<h2>Acceso creado</h2>' +
-      '<p>Entrega estos datos al propietario del negocio. La contrasena temporal solo se muestra ahora.</p>' +
+      '<p>Entrega estos datos al propietario del negocio. Si la solicitud ya traia clave, el propietario entra con esa misma clave.</p>' +
       '<ul class="route-list">' +
         '<li><span>Negocio</span><strong>' + escapeHtml(data.business.business_name) + '</strong></li>' +
         '<li><span>Codigo</span><strong>' + escapeHtml(data.business.business_code) + '</strong></li>' +
         '<li><span>Correo</span><strong>' + escapeHtml(data.owner.email) + '</strong></li>' +
-        '<li><span>Contrasena temporal</span><strong>' + escapeHtml(data.owner.temporary_password) + '</strong></li>' +
+        '<li><span>' + escapeHtml(ownerPasswordLabel) + '</span><strong>' + escapeHtml(ownerPasswordValue) + '</strong></li>' +
         '<li><span>Panel negocio</span><strong>' + escapeHtml(businessLoginUrl || 'Configura APP_URL') + '</strong></li>' +
         '<li><span>Link clientes</span><strong>' + escapeHtml(customerRegisterUrl || 'Configura APP_URL') + '</strong></li>' +
         '<li><span>Correo automatico</span><strong>' + escapeHtml(emailStatus) + '</strong></li>' +
@@ -248,7 +254,9 @@
       'Cuenta activa en Loyalty',
       'Panel: ' + (data.business_login_url || ''),
       'Correo: ' + (data.owner && data.owner.email ? data.owner.email : ''),
-      'Contrasena temporal: ' + (data.owner && data.owner.temporary_password ? data.owner.temporary_password : ''),
+      (data.owner && data.owner.password_mode === 'chosen' ?
+        'Clave: usa la clave creada al enviar la solicitud' :
+        'Contrasena temporal: ' + (data.owner && data.owner.temporary_password ? data.owner.temporary_password : '')),
       'Link clientes: ' + (data.customer_register_url || data.register_url || '')
     ].join('\n');
   }
@@ -284,6 +292,8 @@
       }
 
       container.innerHTML = businesses.map(renderBusinessCard).join('');
+      bindBusinessActions(container);
+      AppUtils.mountIcons();
     } catch (error) {
       container.innerHTML = '<article class="panel-card"><h2>Error</h2><p>' + escapeHtml(error.message) + '</p></article>';
     }
@@ -301,7 +311,44 @@
         '<div><dt>Ciudad</dt><dd>' + escapeHtml(business.city) + '</dd></div>' +
         '<div><dt>Plan</dt><dd>' + escapeHtml(business.plan) + '</dd></div>' +
       '</dl>' +
+      '<div class="request-card__actions">' +
+        '<button class="button button--ghost" type="button" data-reset-owner-password="' + escapeAttr(business.business_id) + '"><i data-lucide="key-round"></i>Restablecer clave</button>' +
+      '</div>' +
       '</article>';
+  }
+
+  function bindBusinessActions(container) {
+    AppUtils.qsa('[data-reset-owner-password]', container).forEach(function(button) {
+      button.addEventListener('click', function() {
+        resetOwnerPassword(button.dataset.resetOwnerPassword, button);
+      });
+    });
+  }
+
+  async function resetOwnerPassword(businessId, button) {
+    if (!window.confirm('Crear una clave temporal nueva para este negocio?')) {
+      return;
+    }
+
+    AppUtils.setButtonLoading(button, true, 'Creando...');
+
+    try {
+      var result = await AppAPI.apiRequest('resetBusinessOwnerPassword', {
+        business_id: businessId
+      });
+
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudo restablecer la clave.');
+      }
+
+      showApprovalResult(result.data);
+      openApprovalWhatsApp(result.data);
+      AppUtils.toast('Clave temporal creada.', 'success');
+    } catch (error) {
+      AppUtils.toast(error.message, 'error');
+    } finally {
+      AppUtils.setButtonLoading(button, false);
+    }
   }
 
   function setText(selector, value) {
