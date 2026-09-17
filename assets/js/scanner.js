@@ -59,6 +59,7 @@
     var card = data.card || {};
     var program = data.program || {};
     var welcome = data.welcome_reward || {};
+    var coupons = data.available_coupons || [];
 
     if (!data.has_card) {
       currentCard = null;
@@ -87,6 +88,7 @@
         '<button class="button button--ghost" type="button" data-card-action="add_points">Agregar puntos</button>' +
         '<button class="button button--warning" type="button" data-card-action="redeem_welcome_reward"' + (welcome.status === 'available' ? '' : ' disabled') + '>Canjear bienvenida</button>' +
       '</div>' +
+      '<div class="scanner-coupons"><h3>Cupones disponibles</h3>' + renderCoupons(coupons) + '</div>' +
       '<div class="client-list scanner-history">' + renderHistory(data.history || []) + '</div>';
 
     bindResultActions(container);
@@ -105,9 +107,15 @@
         applyAction(button.dataset.cardAction, button);
       });
     });
+
+    AppUtils.qsa('[data-redeem-coupon]', container).forEach(function(button) {
+      button.addEventListener('click', function() {
+        applyAction('redeem_coupon', button, button.dataset.redeemCoupon);
+      });
+    });
   }
 
-  async function applyAction(action, button) {
+  async function applyAction(action, button, couponId) {
     if (!currentCard || !currentCard.card_id) {
       return;
     }
@@ -128,7 +136,8 @@
       var result = await AppAPI.apiRequest('applyBusinessCustomerAction', {
         card_id: currentCard.card_id,
         action: action,
-        amount: amount
+        amount: amount,
+        coupon_id: couponId || ''
       });
 
       if (!result.success) {
@@ -142,6 +151,8 @@
         card: result.data.card,
         program: result.data.program,
         welcome_reward: result.data.welcome_reward,
+        coupons: result.data.coupons,
+        available_coupons: result.data.coupons ? result.data.coupons.filter(function(coupon) { return coupon.status === 'available'; }) : [],
         history: result.data.history
       });
       AppUtils.toast('Movimiento registrado.', 'success');
@@ -162,6 +173,16 @@
     }).join('');
   }
 
+  function renderCoupons(coupons) {
+    if (!coupons.length) {
+      return '<p class="muted">Sin cupones disponibles.</p>';
+    }
+
+    return '<div class="client-list">' + coupons.map(function(coupon) {
+      return '<article class="history-card"><div class="history-card__icon"><i data-lucide="ticket"></i></div><div><strong>' + escapeHtml(coupon.title || 'Cupon') + '</strong><p>' + escapeHtml(coupon.description || '') + '</p><button class="button button--warning" type="button" data-redeem-coupon="' + escapeAttr(coupon.coupon_id) + '">Canjear cupon</button></div></article>';
+    }).join('') + '</div>';
+  }
+
   function transactionLabel(item) {
     if (item.type === 'add_stamp') {
       return '+1 sello';
@@ -177,6 +198,14 @@
 
     if (item.type === 'welcome_reward_redeemed') {
       return 'Bienvenida canjeada';
+    }
+
+    if (item.type === 'coupon_granted') {
+      return item.notes || 'Cupon desbloqueado';
+    }
+
+    if (item.type === 'coupon_redeemed') {
+      return item.notes || 'Cupon canjeado';
     }
 
     return item.notes || item.type || 'Movimiento';

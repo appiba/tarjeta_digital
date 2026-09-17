@@ -84,10 +84,21 @@
       }
 
       lookupData = result.data || {};
+
+      if (!lookupData.customer_exists) {
+        await createWalletFromPhone(button);
+        return;
+      }
+
       paintLookupResult(lookupData);
     } catch (error) {
       console.error(error);
-      AppUtils.toast('No pudimos revisar tu Wallet. Intenta nuevamente.', 'error');
+      try {
+        await createWalletFromPhone(button);
+      } catch (registerError) {
+        console.error(registerError);
+        AppUtils.toast(registerError.message || 'No pudimos revisar tu Wallet. Intenta nuevamente.', 'error');
+      }
     } finally {
       AppUtils.setButtonLoading(button, false);
     }
@@ -149,9 +160,24 @@
     }
   }
 
+  async function createWalletFromPhone(button) {
+    AppUtils.setButtonLoading(button, true, 'Creando Wallet...');
+
+    var result = await AppAPI.apiRequest('registerCustomerWallet', {
+      business_code: currentBusinessCode,
+      phone: currentPhone,
+      full_name: 'Cliente Loyalty'
+    });
+
+    if (!result.success) {
+      throw new Error(result.message || 'No se pudo crear tu Wallet.');
+    }
+
+    completeWalletFlow(result.data, result.data.is_new_customer ? 'Primer cupon listo' : 'Wallet encontrada');
+  }
+
   function paintLookupResult(data) {
     if (!data.customer_exists) {
-      paintProfileForm();
       return;
     }
 
@@ -201,15 +227,18 @@
     var card = data.card || {};
     var walletUrl = data.wallet_url || '../client/';
     var cardUrl = data.card_url || walletUrl;
+    var coupons = data.available_coupons || data.coupons || [];
+    var firstCoupon = coupons.length ? coupons[0] : null;
 
     showStep('result');
     box.innerHTML = '<h2>' + escapeHtml(title || 'Wallet lista') + '</h2>' +
-      '<p>Tu cliente ya queda identificado por su Wallet. Puedes abrir la tarjeta de este negocio o ver todas tus tarjetas.</p>' +
+      '<p>Tu WhatsApp ya queda guardado en la Wallet. Puedes abrir la tarjeta de este negocio o ver todas tus tarjetas.</p>' +
       '<ul class="route-list">' +
         '<li><span>Cliente</span><strong>' + escapeHtml(customer.full_name || 'Cliente') + '</strong></li>' +
         '<li><span>Wallet</span><strong>' + escapeHtml(customer.wallet_id || (session && session.wallet_id) || '') + '</strong></li>' +
         '<li><span>Negocio</span><strong>' + escapeHtml(business.business_name || '') + '</strong></li>' +
         '<li><span>Tarjeta</span><strong>' + escapeHtml(card.card_id || '') + '</strong></li>' +
+        (firstCoupon ? '<li><span>Cupon</span><strong>' + escapeHtml(firstCoupon.title || 'Cupon disponible') + '</strong></li>' : '') +
       '</ul>' +
       '<div class="approval-actions">' +
         '<a class="button button--primary" href="' + escapeAttr(cardUrl) + '">Abrir mi tarjeta</a>' +

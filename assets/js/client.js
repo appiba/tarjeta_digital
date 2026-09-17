@@ -154,9 +154,10 @@
     var reward = item.reward || {};
     var card = item.card || {};
     var welcome = item.welcome_reward || {};
+    var coupon = firstAvailableCoupon(item.available_coupons || item.coupons || []);
     var disabled = business.status === 'suspended' || card.status !== 'active';
     var style = 'style="--card-primary:' + escapeAttr(business.primary_color || '#1f5eff') + ';--card-secondary:' + escapeAttr(business.secondary_color || '#12b981') + ';--stack-index:' + index + '"';
-    var benefit = welcome.enabled && welcome.status === 'available' ? '1 beneficio disponible' : reward.name || 'Premio configurado';
+    var benefit = coupon ? coupon.title : (welcome.enabled && welcome.status === 'available' ? '1 beneficio disponible' : reward.name || 'Premio configurado');
     var label = progressText(card, program);
 
     return '<a class="wallet-card' + (disabled ? ' is-disabled' : '') + '" ' + style + ' href="card.html?card=' + escapeAttr(card.card_id) + '">' +
@@ -179,6 +180,7 @@
     var program = data.program || {};
     var reward = data.reward || {};
     var welcome = data.welcome_reward || {};
+    var coupons = data.coupons || [];
     var left = Math.max(0, (card.goal || 0) - (card.current || 0));
 
     setThemeColor('--primary', business.primary_color || '#1f5eff');
@@ -195,6 +197,7 @@
     setText('[data-welcome-title]', welcome.enabled ? welcome.title : 'Sin beneficio de bienvenida');
     setText('[data-welcome-status]', welcome.enabled ? statusLabel(welcome.status) : 'No configurado');
     paintProgressBeans(card.current || 0, card.goal || 10);
+    paintMiniList('[data-card-coupons]', coupons, renderCouponItem, 'Aun no tienes cupones.');
     paintMiniList('[data-card-promotions]', data.promotions || [], renderPromotionItem, 'No hay promociones activas.');
     paintMiniList('[data-card-history]', data.history || [], renderHistoryItem, 'Sin movimientos todavia.');
     AppUtils.mountIcons();
@@ -250,9 +253,18 @@
 
   function renderPromotionItem(promotion) {
     var business = promotion.business || {};
+    var icon = promotion.type === 'coupon' ? 'ticket' : initials(business.business_name || 'L');
     return '<article class="promotion-card">' +
-      '<div class="promotion-card__image" style="background:linear-gradient(135deg,' + escapeAttr(business.primary_color || '#1f5eff') + ',' + escapeAttr(business.secondary_color || '#12b981') + ')">' + escapeHtml(initials(business.business_name || 'L')) + '</div>' +
+      '<div class="promotion-card__image" style="background:linear-gradient(135deg,' + escapeAttr(business.primary_color || '#1f5eff') + ',' + escapeAttr(business.secondary_color || '#12b981') + ')">' + escapeHtml(icon) + '</div>' +
       '<div><span class="badge">' + escapeHtml(business.business_name || 'Negocio') + '</span><h2>' + escapeHtml(promotion.title || 'Promocion') + '</h2><p>' + escapeHtml(promotion.description || '') + '</p></div>' +
+      '</article>';
+  }
+
+  function renderCouponItem(coupon) {
+    var business = coupon.business || {};
+    return '<article class="history-card">' +
+      '<div class="history-card__icon"><i data-lucide="ticket"></i></div>' +
+      '<div><span class="badge">' + escapeHtml(statusLabel(coupon.status)) + '</span><h2>' + escapeHtml(coupon.title || 'Cupon') + '</h2><p>' + escapeHtml(coupon.description || business.business_name || '') + '</p></div>' +
       '</article>';
   }
 
@@ -283,6 +295,14 @@
 
     if (item.type === 'welcome_reward_redeemed') {
       return 'Beneficio canjeado';
+    }
+
+    if (item.type === 'coupon_granted') {
+      return item.notes || 'Cupon desbloqueado';
+    }
+
+    if (item.type === 'coupon_redeemed') {
+      return item.notes || 'Cupon canjeado';
     }
 
     if (item.type === 'card_added') {
@@ -383,6 +403,16 @@
     }
 
     return status || 'No configurado';
+  }
+
+  function firstAvailableCoupon(coupons) {
+    for (var index = coupons.length - 1; index >= 0; index -= 1) {
+      if (coupons[index].status === 'available') {
+        return coupons[index];
+      }
+    }
+
+    return coupons.length ? coupons[coupons.length - 1] : null;
   }
 
   function firstName(name) {

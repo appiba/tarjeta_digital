@@ -17,6 +17,8 @@ function lookupCustomerPhone_(data) {
     welcome_reward: publicWelcomeReward_(program, card),
     has_card: Boolean(card),
     card: card ? publicCustomerCard_(card, program) : null,
+    coupons: card ? getCouponsForCard_(card.card_id).map(publicCustomerCoupon_) : [],
+    available_coupons: card ? getAvailableCouponsForCard_(card.card_id).map(publicCustomerCoupon_) : [],
     card_url: card ? buildClientCardUrl_(card.card_id) : '',
     wallet_url: customer ? buildClientWalletUrl_(customer.wallet_id) : ''
   };
@@ -45,7 +47,10 @@ function registerOrAttachCustomer_(data) {
     var isNewCustomer = false;
 
     if (!customer) {
-      requireFields_(data, ['full_name']);
+      if (!data.full_name && !data.name) {
+        data.full_name = 'Cliente Loyalty';
+      }
+
       customer = createCustomer_(data);
       isNewCustomer = true;
     } else {
@@ -78,6 +83,8 @@ function registerOrAttachCustomer_(data) {
       reward: program && program.reward_id ? publicReward_(findRowByValue_('REWARDS', 'reward_id', program.reward_id)) : null,
       card: card ? publicCustomerCard_(card, program) : null,
       welcome_reward: publicWelcomeReward_(program, card),
+      coupons: card ? getCouponsForCard_(card.card_id).map(publicCustomerCoupon_) : [],
+      available_coupons: card ? getAvailableCouponsForCard_(card.card_id).map(publicCustomerCoupon_) : [],
       is_new_customer: isNewCustomer,
       is_new_card: isNewCard,
       wallet_url: buildClientWalletUrl_(customer.wallet_id),
@@ -120,6 +127,8 @@ function attachBusinessCard_(data) {
       reward: program.reward_id ? publicReward_(findRowByValue_('REWARDS', 'reward_id', program.reward_id)) : null,
       card: publicCustomerCard_(existing, program),
       welcome_reward: publicWelcomeReward_(program, existing),
+      coupons: getCouponsForCard_(existing.card_id).map(publicCustomerCoupon_),
+      available_coupons: getAvailableCouponsForCard_(existing.card_id).map(publicCustomerCoupon_),
       is_new_card: isNewCard,
       wallet_url: buildClientWalletUrl_(context.customer.wallet_id),
       card_url: buildClientCardUrl_(existing.card_id)
@@ -238,6 +247,8 @@ function scanWallet_(context, data) {
     can_add: !card,
     card: card ? publicCustomerCard_(card, program) : null,
     welcome_reward: publicWelcomeReward_(program, card),
+    coupons: card ? getCouponsForCard_(card.card_id).map(publicCustomerCoupon_) : [],
+    available_coupons: card ? getAvailableCouponsForCard_(card.card_id).map(publicCustomerCoupon_) : [],
     history: card ? getHistoryForCard_(card.card_id) : []
   };
 }
@@ -267,6 +278,8 @@ function getBusinessCustomerCard_(context, data) {
     program: publicProgram_(program),
     card: publicCustomerCard_(card, program),
     welcome_reward: publicWelcomeReward_(program, card),
+    coupons: getCouponsForCard_(card.card_id).map(publicCustomerCoupon_),
+    available_coupons: getAvailableCouponsForCard_(card.card_id).map(publicCustomerCoupon_),
     history: getHistoryForCard_(card.card_id)
   };
 }
@@ -282,7 +295,9 @@ function listBusinessCustomers_(context, data) {
       customer: publicCustomer_(customer || {}),
       card: publicCustomerCard_(card, program),
       program: publicProgram_(program),
-      welcome_reward: publicWelcomeReward_(program, card)
+      welcome_reward: publicWelcomeReward_(program, card),
+      coupons: getCouponsForCard_(card.card_id).map(publicCustomerCoupon_),
+      available_coupons: getAvailableCouponsForCard_(card.card_id).map(publicCustomerCoupon_)
     };
   });
 

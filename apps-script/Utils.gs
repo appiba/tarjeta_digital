@@ -56,9 +56,25 @@ var SHEET_SCHEMAS = Object.freeze({
     'visits',
     'lifetime_points',
     'welcome_reward_status',
+    'coupon_tier',
+    'coupon_status',
+    'coupon_title',
     'status',
     'created_at',
     'updated_at'
+  ],
+  CUSTOMER_COUPONS: [
+    'coupon_id',
+    'customer_id',
+    'business_id',
+    'card_id',
+    'tier',
+    'title',
+    'description',
+    'status',
+    'trigger_count',
+    'created_at',
+    'redeemed_at'
   ],
   LOYALTY_PROGRAMS: [
     'program_id',

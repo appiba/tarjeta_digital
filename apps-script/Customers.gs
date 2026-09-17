@@ -1,6 +1,6 @@
 function ensureWalletSchema_() {
   var spreadsheet = getSpreadsheet_();
-  ['CUSTOMERS', 'CUSTOMER_CARDS', 'CUSTOMER_SESSIONS', 'LOYALTY_PROGRAMS', 'TRANSACTIONS', 'REDEMPTIONS', 'PROMOTIONS'].forEach(function(sheetName) {
+  ['CUSTOMERS', 'CUSTOMER_CARDS', 'CUSTOMER_COUPONS', 'CUSTOMER_SESSIONS', 'LOYALTY_PROGRAMS', 'TRANSACTIONS', 'REDEMPTIONS', 'PROMOTIONS'].forEach(function(sheetName) {
     ensureSheet_(spreadsheet, sheetName, SHEET_SCHEMAS[sheetName]);
   });
 }

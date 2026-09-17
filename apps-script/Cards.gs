@@ -42,12 +42,17 @@ function createCustomerCard_(customer, business, program, options) {
     visits: 0,
     lifetime_points: 0,
     welcome_reward_status: welcomeStatus,
+    coupon_tier: '',
+    coupon_status: '',
+    coupon_title: '',
     status: 'active',
     created_at: timestamp,
     updated_at: timestamp
   });
 
   var card = getCustomerCardById_(cardId);
+  grantEligibleCoupons_(card, program);
+  card = getCustomerCardById_(cardId);
 
   appendTransaction_({
     business_id: business.business_id,
@@ -101,6 +106,8 @@ function getWalletCardPayload_(card) {
     program: publicProgram_(program),
     reward: publicReward_(reward),
     welcome_reward: publicWelcomeReward_(program, card),
+    coupons: getCouponsForCard_(card.card_id).map(publicCustomerCoupon_),
+    available_coupons: getAvailableCouponsForCard_(card.card_id).map(publicCustomerCoupon_),
     card: publicCustomerCard_(card, program),
     card_url: buildClientCardUrl_(card.card_id)
   };
@@ -132,6 +139,10 @@ function publicCustomerCard_(card, program) {
     visits: parseInt(card.visits || '0', 10) || 0,
     lifetime_points: parseInt(card.lifetime_points || '0', 10) || 0,
     welcome_reward_status: card.welcome_reward_status || 'none',
+    coupon_tier: card.coupon_tier || '',
+    coupon_status: card.coupon_status || 'none',
+    coupon_title: card.coupon_title || '',
+    available_coupon_count: getAvailableCouponsForCard_(card.card_id).length,
     status: card.status || 'active',
     current: current,
     goal: goal,
@@ -166,6 +177,8 @@ function getPublicCard_(data) {
     program: publicProgram_(program),
     reward: publicReward_(reward),
     welcome_reward: publicWelcomeReward_(program, card),
+    coupons: getCouponsForCard_(card.card_id).map(publicCustomerCoupon_),
+    available_coupons: getAvailableCouponsForCard_(card.card_id).map(publicCustomerCoupon_),
     promotions: promotions,
     history: history,
     card_url: buildClientCardUrl_(card.card_id),

@@ -311,9 +311,25 @@ var SHEET_SCHEMAS = Object.freeze({
     'visits',
     'lifetime_points',
     'welcome_reward_status',
+    'coupon_tier',
+    'coupon_status',
+    'coupon_title',
     'status',
     'created_at',
     'updated_at'
+  ],
+  CUSTOMER_COUPONS: [
+    'coupon_id',
+    'customer_id',
+    'business_id',
+    'card_id',
+    'tier',
+    'title',
+    'description',
+    'status',
+    'trigger_count',
+    'created_at',
+    'redeemed_at'
   ],
   LOYALTY_PROGRAMS: [
     'program_id',
@@ -1630,7 +1646,7 @@ function publicBusiness_(business) {
 // ==================================================
 function ensureWalletSchema_() {
   var spreadsheet = getSpreadsheet_();
-  ['CUSTOMERS', 'CUSTOMER_CARDS', 'CUSTOMER_SESSIONS', 'LOYALTY_PROGRAMS', 'TRANSACTIONS', 'REDEMPTIONS', 'PROMOTIONS'].forEach(function(sheetName) {
+  ['CUSTOMERS', 'CUSTOMER_CARDS', 'CUSTOMER_COUPONS', 'CUSTOMER_SESSIONS', 'LOYALTY_PROGRAMS', 'TRANSACTIONS', 'REDEMPTIONS', 'PROMOTIONS'].forEach(function(sheetName) {
     ensureSheet_(spreadsheet, sheetName, SHEET_SCHEMAS[sheetName]);
   });
 }
@@ -1958,12 +1974,17 @@ function createCustomerCard_(customer, business, program, options) {
     visits: 0,
     lifetime_points: 0,
     welcome_reward_status: welcomeStatus,
+    coupon_tier: '',
+    coupon_status: '',
+    coupon_title: '',
     status: 'active',
     created_at: timestamp,
     updated_at: timestamp
   });
 
   var card = getCustomerCardById_(cardId);
+  grantEligibleCoupons_(card, program);
+  card = getCustomerCardById_(cardId);
 
   appendTransaction_({
     business_id: business.business_id,
@@ -2017,6 +2038,8 @@ function getWalletCardPayload_(card) {
     program: publicProgram_(program),
     reward: publicReward_(reward),
     welcome_reward: publicWelcomeReward_(program, card),
+    coupons: getCouponsForCard_(card.card_id).map(publicCustomerCoupon_),
+    available_coupons: getAvailableCouponsForCard_(card.card_id).map(publicCustomerCoupon_),
     card: publicCustomerCard_(card, program),
     card_url: buildClientCardUrl_(card.card_id)
   };
@@ -2048,6 +2071,10 @@ function publicCustomerCard_(card, program) {
     visits: parseInt(card.visits || '0', 10) || 0,
     lifetime_points: parseInt(card.lifetime_points || '0', 10) || 0,
     welcome_reward_status: card.welcome_reward_status || 'none',
+    coupon_tier: card.coupon_tier || '',
+    coupon_status: card.coupon_status || 'none',
+    coupon_title: card.coupon_title || '',
+    available_coupon_count: getAvailableCouponsForCard_(card.card_id).length,
     status: card.status || 'active',
     current: current,
     goal: goal,
@@ -2082,6 +2109,8 @@ function getPublicCard_(data) {
     program: publicProgram_(program),
     reward: publicReward_(reward),
     welcome_reward: publicWelcomeReward_(program, card),
+    coupons: getCouponsForCard_(card.card_id).map(publicCustomerCoupon_),
+    available_coupons: getAvailableCouponsForCard_(card.card_id).map(publicCustomerCoupon_),
     promotions: promotions,
     history: history,
     card_url: buildClientCardUrl_(card.card_id),
@@ -2112,6 +2141,8 @@ function lookupCustomerPhone_(data) {
     welcome_reward: publicWelcomeReward_(program, card),
     has_card: Boolean(card),
     card: card ? publicCustomerCard_(card, program) : null,
+    coupons: card ? getCouponsForCard_(card.card_id).map(publicCustomerCoupon_) : [],
+    available_coupons: card ? getAvailableCouponsForCard_(card.card_id).map(publicCustomerCoupon_) : [],
     card_url: card ? buildClientCardUrl_(card.card_id) : '',
     wallet_url: customer ? buildClientWalletUrl_(customer.wallet_id) : ''
   };
@@ -2140,7 +2171,10 @@ function registerOrAttachCustomer_(data) {
     var isNewCustomer = false;
 
     if (!customer) {
-      requireFields_(data, ['full_name']);
+      if (!data.full_name && !data.name) {
+        data.full_name = 'Cliente Loyalty';
+      }
+
       customer = createCustomer_(data);
       isNewCustomer = true;
     } else {
@@ -2173,6 +2207,8 @@ function registerOrAttachCustomer_(data) {
       reward: program && program.reward_id ? publicReward_(findRowByValue_('REWARDS', 'reward_id', program.reward_id)) : null,
       card: card ? publicCustomerCard_(card, program) : null,
       welcome_reward: publicWelcomeReward_(program, card),
+      coupons: card ? getCouponsForCard_(card.card_id).map(publicCustomerCoupon_) : [],
+      available_coupons: card ? getAvailableCouponsForCard_(card.card_id).map(publicCustomerCoupon_) : [],
       is_new_customer: isNewCustomer,
       is_new_card: isNewCard,
       wallet_url: buildClientWalletUrl_(customer.wallet_id),
@@ -2215,6 +2251,8 @@ function attachBusinessCard_(data) {
       reward: program.reward_id ? publicReward_(findRowByValue_('REWARDS', 'reward_id', program.reward_id)) : null,
       card: publicCustomerCard_(existing, program),
       welcome_reward: publicWelcomeReward_(program, existing),
+      coupons: getCouponsForCard_(existing.card_id).map(publicCustomerCoupon_),
+      available_coupons: getAvailableCouponsForCard_(existing.card_id).map(publicCustomerCoupon_),
       is_new_card: isNewCard,
       wallet_url: buildClientWalletUrl_(context.customer.wallet_id),
       card_url: buildClientCardUrl_(existing.card_id)
@@ -2333,6 +2371,8 @@ function scanWallet_(context, data) {
     can_add: !card,
     card: card ? publicCustomerCard_(card, program) : null,
     welcome_reward: publicWelcomeReward_(program, card),
+    coupons: card ? getCouponsForCard_(card.card_id).map(publicCustomerCoupon_) : [],
+    available_coupons: card ? getAvailableCouponsForCard_(card.card_id).map(publicCustomerCoupon_) : [],
     history: card ? getHistoryForCard_(card.card_id) : []
   };
 }
@@ -2362,6 +2402,8 @@ function getBusinessCustomerCard_(context, data) {
     program: publicProgram_(program),
     card: publicCustomerCard_(card, program),
     welcome_reward: publicWelcomeReward_(program, card),
+    coupons: getCouponsForCard_(card.card_id).map(publicCustomerCoupon_),
+    available_coupons: getAvailableCouponsForCard_(card.card_id).map(publicCustomerCoupon_),
     history: getHistoryForCard_(card.card_id)
   };
 }
@@ -2377,7 +2419,9 @@ function listBusinessCustomers_(context, data) {
       customer: publicCustomer_(customer || {}),
       card: publicCustomerCard_(card, program),
       program: publicProgram_(program),
-      welcome_reward: publicWelcomeReward_(program, card)
+      welcome_reward: publicWelcomeReward_(program, card),
+      coupons: getCouponsForCard_(card.card_id).map(publicCustomerCoupon_),
+      available_coupons: getAvailableCouponsForCard_(card.card_id).map(publicCustomerCoupon_)
     };
   });
 
@@ -2534,6 +2578,33 @@ function assertSupportedProgramType_(programType) {
   }
 }
 
+var COUPON_TIERS = Object.freeze([
+  {
+    tier: 'initial',
+    threshold: 0,
+    title: 'Primer cupon',
+    description: 'Beneficio inicial por unirte al programa.'
+  },
+  {
+    tier: 'silver',
+    threshold: 3,
+    title: 'Cupon de plata',
+    description: 'Beneficio desbloqueado por volver varias veces.'
+  },
+  {
+    tier: 'gold',
+    threshold: 6,
+    title: 'Cupon de oro',
+    description: 'Beneficio premium por tu fidelidad.'
+  },
+  {
+    tier: 'platinum',
+    threshold: 10,
+    title: 'Cupon platino',
+    description: 'El mejor beneficio del programa.'
+  }
+]);
+
 function publicProgram_(program) {
   if (!program) {
     return null;
@@ -2593,6 +2664,162 @@ function publicWelcomeReward_(program, card) {
     value: program.welcome_reward_value || '',
     title: getWelcomeRewardTitle_(program),
     description: program.welcome_reward_description || ''
+  };
+}
+
+function getCouponProgressCount_(card, program) {
+  var type = String(program && program.program_type || 'STAMPS').toUpperCase();
+
+  if (type === 'POINTS') {
+    return parseInt(card.lifetime_points || card.points || '0', 10) || 0;
+  }
+
+  if (type === 'VISITS') {
+    return parseInt(card.visits || '0', 10) || 0;
+  }
+
+  return parseInt(card.stamps || '0', 10) || 0;
+}
+
+function getCouponTierByName_(tier) {
+  var key = String(tier || '').toLowerCase();
+
+  for (var index = 0; index < COUPON_TIERS.length; index += 1) {
+    if (COUPON_TIERS[index].tier === key) {
+      return COUPON_TIERS[index];
+    }
+  }
+
+  return null;
+}
+
+function getCouponByCardTier_(cardId, tier) {
+  var coupons = findRowsByValue_('CUSTOMER_COUPONS', 'card_id', cardId);
+
+  for (var index = 0; index < coupons.length; index += 1) {
+    if (String(coupons[index].tier || '').toLowerCase() === String(tier || '').toLowerCase()) {
+      return coupons[index];
+    }
+  }
+
+  return null;
+}
+
+function grantEligibleCoupons_(card, program) {
+  ensureWalletSchema_();
+
+  var count = getCouponProgressCount_(card, program);
+  var granted = [];
+
+  COUPON_TIERS.forEach(function(tier) {
+    if (count < tier.threshold) {
+      return;
+    }
+
+    if (getCouponByCardTier_(card.card_id, tier.tier)) {
+      return;
+    }
+
+    var coupon = {
+      coupon_id: generateId_('CPN'),
+      customer_id: card.customer_id,
+      business_id: card.business_id,
+      card_id: card.card_id,
+      tier: tier.tier,
+      title: tier.title,
+      description: tier.description,
+      status: 'available',
+      trigger_count: count,
+      created_at: nowIso_(),
+      redeemed_at: ''
+    };
+
+    appendObject_('CUSTOMER_COUPONS', coupon);
+    appendTransaction_({
+      business_id: card.business_id,
+      customer_id: card.customer_id,
+      card_id: card.card_id,
+      type: 'coupon_granted',
+      amount: tier.tier,
+      notes: tier.title
+    });
+
+    granted.push(coupon);
+  });
+
+  syncCardCouponSummary_(card.card_id);
+  return granted;
+}
+
+function syncCardCouponSummary_(cardId) {
+  var card = getCustomerCardById_(cardId);
+
+  if (!card) {
+    return null;
+  }
+
+  var coupons = getCouponsForCard_(cardId);
+  var available = coupons.filter(function(coupon) {
+    return coupon.status === 'available';
+  });
+  var current = available.length ? available[available.length - 1] : (coupons.length ? coupons[coupons.length - 1] : null);
+
+  updateRowByNumber_('CUSTOMER_CARDS', card._rowNumber, {
+    coupon_tier: current ? current.tier : '',
+    coupon_status: current ? current.status : 'none',
+    coupon_title: current ? current.title : '',
+    updated_at: nowIso_()
+  });
+
+  return current;
+}
+
+function getCouponsForCard_(cardId) {
+  var coupons = findRowsByValue_('CUSTOMER_COUPONS', 'card_id', cardId);
+
+  coupons.sort(function(left, right) {
+    var leftTier = getCouponTierByName_(left.tier);
+    var rightTier = getCouponTierByName_(right.tier);
+    var leftThreshold = leftTier ? leftTier.threshold : 0;
+    var rightThreshold = rightTier ? rightTier.threshold : 0;
+    return leftThreshold - rightThreshold;
+  });
+
+  return coupons;
+}
+
+function getAvailableCouponsForCard_(cardId) {
+  return getCouponsForCard_(cardId).filter(function(coupon) {
+    return coupon.status === 'available';
+  });
+}
+
+function getCouponsForCustomer_(customerId) {
+  var coupons = findRowsByValue_('CUSTOMER_COUPONS', 'customer_id', customerId);
+
+  coupons.sort(function(left, right) {
+    return String(right.created_at).localeCompare(String(left.created_at));
+  });
+
+  return coupons;
+}
+
+function publicCustomerCoupon_(coupon) {
+  var business = coupon.business_id ? getBusinessById_(coupon.business_id) : null;
+
+  return {
+    coupon_id: coupon.coupon_id,
+    customer_id: coupon.customer_id,
+    business_id: coupon.business_id,
+    card_id: coupon.card_id,
+    business: business ? publicBusiness_(business) : null,
+    tier: coupon.tier || '',
+    title: coupon.title || '',
+    description: coupon.description || '',
+    status: coupon.status || '',
+    trigger_count: parseInt(coupon.trigger_count || '0', 10) || 0,
+    created_at: coupon.created_at || '',
+    redeemed_at: coupon.redeemed_at || ''
   };
 }
 
@@ -2668,6 +2895,24 @@ function getWalletPromotionsForCustomer_(customerId) {
         seen[promotion.promotion_id] = true;
         promotions.push(promotion);
       }
+    });
+  });
+
+  getCouponsForCustomer_(customerId).forEach(function(coupon) {
+    if (coupon.status !== 'available') {
+      return;
+    }
+
+    promotions.push({
+      promotion_id: coupon.coupon_id,
+      type: 'coupon',
+      business: coupon.business_id ? publicBusiness_(getBusinessById_(coupon.business_id) || {}) : null,
+      title: coupon.title || '',
+      description: coupon.description || '',
+      image_url: '',
+      start_date: coupon.created_at || '',
+      end_date: '',
+      status: coupon.status || ''
     });
   });
 
@@ -2782,6 +3027,41 @@ function applyBusinessCustomerAction_(context, data) {
         new_balance: updates.points,
         notes: data.notes || '+' + amount + ' puntos'
       });
+    } else if (action === 'redeem_coupon') {
+      requireFields_(data, ['coupon_id']);
+
+      var coupon = findRowByValue_('CUSTOMER_COUPONS', 'coupon_id', data.coupon_id);
+
+      if (!coupon || coupon.card_id !== card.card_id || coupon.status !== 'available') {
+        throw appError_('Cupon no disponible.', 'coupon_not_available');
+      }
+
+      updateRowByNumber_('CUSTOMER_COUPONS', coupon._rowNumber, {
+        status: 'redeemed',
+        redeemed_at: nowIso_()
+      });
+      transaction = appendTransaction_({
+        business_id: card.business_id,
+        customer_id: card.customer_id,
+        card_id: card.card_id,
+        staff_user_id: context.user.user_id,
+        type: 'coupon_redeemed',
+        amount: coupon.tier,
+        notes: coupon.title || 'Cupon canjeado'
+      });
+
+      appendObject_('REDEMPTIONS', {
+        redemption_id: generateId_('RED'),
+        business_id: card.business_id,
+        customer_id: card.customer_id,
+        card_id: card.card_id,
+        reward_id: coupon.coupon_id,
+        staff_user_id: context.user.user_id,
+        status: 'redeemed',
+        created_at: nowIso_(),
+        redeemed_at: nowIso_()
+      });
+      syncCardCouponSummary_(card.card_id);
     } else if (action === 'redeem_welcome_reward') {
       if (card.welcome_reward_status !== 'available') {
         throw appError_('Beneficio de bienvenida no disponible.', 'welcome_reward_not_available');
@@ -2816,6 +3096,8 @@ function applyBusinessCustomerAction_(context, data) {
     updateRowByNumber_('CUSTOMER_CARDS', card._rowNumber, updates);
 
     var updatedCard = getCustomerCardById_(card.card_id);
+    grantEligibleCoupons_(updatedCard, program);
+    updatedCard = getCustomerCardById_(card.card_id);
     var customer = getCustomerById_(card.customer_id);
 
     logActivity_(context.user.user_id, card.business_id, action, 'customer_card', card.card_id, {
@@ -2828,6 +3110,7 @@ function applyBusinessCustomerAction_(context, data) {
       card: publicCustomerCard_(updatedCard, program),
       program: publicProgram_(program),
       welcome_reward: publicWelcomeReward_(program, updatedCard),
+      coupons: getCouponsForCard_(card.card_id).map(publicCustomerCoupon_),
       transaction: transaction ? publicTransaction_(transaction) : null,
       history: getHistoryForCard_(card.card_id)
     };
