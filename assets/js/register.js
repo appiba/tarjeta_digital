@@ -114,7 +114,7 @@
     AppUtils.setButtonLoading(button, true, 'Creando Wallet...');
 
     try {
-      var result = await AppAPI.apiRequest('registerCustomerWallet', {
+      var result = await requestCustomerRegistration({
         business_code: currentBusinessCode,
         full_name: formData.get('full_name'),
         phone: currentPhone || formData.get('phone'),
@@ -143,9 +143,10 @@
     AppUtils.setButtonLoading(button, true, action === 'open-card' ? 'Abriendo...' : 'Agregando...');
 
     try {
-      var result = await AppAPI.apiRequest('registerCustomerWallet', {
+      var result = await requestCustomerRegistration({
         business_code: currentBusinessCode,
-        phone: currentPhone
+        phone: currentPhone,
+        full_name: lookupData && lookupData.customer && lookupData.customer.full_name ? lookupData.customer.full_name : 'Cliente Loyalty'
       });
 
       if (!result.success) {
@@ -163,7 +164,7 @@
   async function createWalletFromPhone(button) {
     AppUtils.setButtonLoading(button, true, 'Creando Wallet...');
 
-    var result = await AppAPI.apiRequest('registerCustomerWallet', {
+    var result = await requestCustomerRegistration({
       business_code: currentBusinessCode,
       phone: currentPhone,
       full_name: 'Cliente Loyalty'
@@ -174,6 +175,24 @@
     }
 
     completeWalletFlow(result.data, result.data.is_new_customer ? 'Primer cupon listo' : 'Wallet encontrada');
+  }
+
+  async function requestCustomerRegistration(payload) {
+    var result = await AppAPI.apiRequest('registerCustomerWallet', payload);
+
+    if (!isNotImplemented(result, 'registerCustomerWallet')) {
+      return result;
+    }
+
+    return AppAPI.apiRequest('registerCustomer', payload);
+  }
+
+  function isNotImplemented(result, action) {
+    var message = String(result && result.message || '').toLowerCase();
+    var error = String(result && result.error || '').toLowerCase();
+    var actionName = String(action || '').toLowerCase();
+
+    return error === 'not_implemented' || (message.indexOf('accion no implementada') !== -1 && message.indexOf(actionName) !== -1);
   }
 
   function paintLookupResult(data) {
@@ -247,6 +266,14 @@
 
     AppUtils.toast(title || 'Wallet lista.', 'success');
     AppUtils.mountIcons();
+
+    window.setTimeout(function() {
+      var targetUrl = cardUrl || walletUrl;
+
+      if (targetUrl) {
+        window.location.href = targetUrl;
+      }
+    }, 500);
   }
 
   function bindDynamicResultButtons(root) {
