@@ -318,6 +318,43 @@ function listAdminCustomers_(context, data) {
   };
 }
 
+function analyzeCustomerDuplicates_(context, data) {
+  var groups = {};
+  var duplicates = [];
+
+  getAllRows_('CUSTOMERS').forEach(function(customer) {
+    customer = ensureCustomerWalletFields_(customer);
+    var key = customer.phone_normalized || normalizeCustomerPhone_(customer.phone || '');
+
+    if (!key) {
+      key = 'missing_phone';
+    }
+
+    if (!groups[key]) {
+      groups[key] = [];
+    }
+
+    groups[key].push(publicCustomer_(customer));
+  });
+
+  Object.keys(groups).forEach(function(key) {
+    if (groups[key].length > 1) {
+      duplicates.push({
+        phone_normalized: key,
+        count: groups[key].length,
+        customers: groups[key]
+      });
+    }
+  });
+
+  return {
+    duplicate_groups: duplicates,
+    duplicate_group_count: duplicates.length,
+    reviewed_at: nowIso_(),
+    note: 'Reporte solamente. No fusiona ni borra clientes.'
+  };
+}
+
 function getActiveBusinessByCodeForCustomer_(businessCode) {
   var business = getBusinessByCode_(businessCode);
 

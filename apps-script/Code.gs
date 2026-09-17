@@ -102,6 +102,8 @@ function routeAction_(request) {
       return resetBusinessOwnerPassword_(requireSession_(request.token, ['super_admin']), request.data);
     case 'listAdminCustomers':
       return listAdminCustomers_(requireSession_(request.token, ['super_admin']), request.data);
+    case 'analyzeCustomerDuplicates':
+      return analyzeCustomerDuplicates_(requireSession_(request.token, ['super_admin']), request.data);
     case 'getBusinessHome':
       return getBusinessHome_(requireSession_(request.token, ['business_owner', 'staff']));
     case 'listBusinessCustomers':
