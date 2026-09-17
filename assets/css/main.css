@@ -1419,6 +1419,25 @@ svg {
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13);
 }
 
+.check-row {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 13px;
+  background: #ffffff;
+  color: var(--text);
+  font-weight: 800;
+}
+
+.check-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+}
+
 .alert {
   display: none;
   margin-top: 16px;

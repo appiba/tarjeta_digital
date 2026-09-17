@@ -121,6 +121,12 @@ function routeAction_(request) {
       return getBusinessHome_(requireSession_(request.token, ['business_owner', 'staff']));
     case 'listBusinessCustomers':
       return listBusinessCustomers_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
+    case 'listBusinessPromotions':
+      return listBusinessPromotions_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
+    case 'createBusinessPromotion':
+      return createBusinessPromotion_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
+    case 'updateBusinessPromotionStatus':
+      return updateBusinessPromotionStatus_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
     case 'scanWallet':
       return scanWallet_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
     case 'getBusinessCustomerCard':
@@ -405,6 +411,10 @@ var SHEET_SCHEMAS = Object.freeze({
     'title',
     'description',
     'image_url',
+    'promotion_type',
+    'visibility_status',
+    'surprise_enabled',
+    'coupon_label',
     'start_date',
     'end_date',
     'status',
@@ -3091,23 +3101,13 @@ function appendTransaction_(values) {
   return transaction;
 }
 
-function getPromotionsForBusiness_(businessId) {
+function getPromotionsForBusiness_(businessId, includeAll) {
   return findRowsByValue_('PROMOTIONS', 'business_id', businessId)
     .filter(function(promotion) {
-      return isPromotionVisible_(promotion);
+      return includeAll || isPromotionVisible_(promotion);
     })
     .map(function(promotion) {
-      var business = getBusinessById_(promotion.business_id);
-      return {
-        promotion_id: promotion.promotion_id,
-        business: publicBusiness_(business || {}),
-        title: promotion.title || '',
-        description: promotion.description || '',
-        image_url: promotion.image_url || '',
-        start_date: promotion.start_date || '',
-        end_date: promotion.end_date || '',
-        status: promotion.status || ''
-      };
+      return publicPromotion_(promotion);
     });
 }
 
@@ -3120,7 +3120,7 @@ function getWalletPromotionsForCustomer_(customerId) {
       return;
     }
 
-    getPromotionsForBusiness_(card.business_id).forEach(function(promotion) {
+    getPromotionsForBusiness_(card.business_id, true).forEach(function(promotion) {
       if (!seen[promotion.promotion_id]) {
         seen[promotion.promotion_id] = true;
         promotions.push(promotion);
@@ -3353,8 +3353,12 @@ function applyBusinessCustomerAction_(context, data) {
 // Promotions.gs
 // ==================================================
 function isPromotionVisible_(promotion, now) {
+  return getPromotionScheduleState_(promotion, now) === 'active';
+}
+
+function getPromotionScheduleState_(promotion, now) {
   if (!promotion || promotion.status !== 'active') {
-    return false;
+    return 'disabled';
   }
 
   var current = now ? new Date(now) : new Date();
@@ -3362,14 +3366,119 @@ function isPromotionVisible_(promotion, now) {
   var end = promotion.end_date ? new Date(promotion.end_date) : null;
 
   if (start && !isNaN(start.getTime()) && current < start) {
-    return false;
+    return 'scheduled';
   }
 
   if (end && !isNaN(end.getTime()) && current > end) {
-    return false;
+    return 'expired';
   }
 
-  return true;
+  return 'active';
+}
+
+function listBusinessPromotions_(context, data) {
+  var rows = findRowsByValue_('PROMOTIONS', 'business_id', context.user.business_id);
+
+  rows.sort(function(left, right) {
+    return String(right.created_at).localeCompare(String(left.created_at));
+  });
+
+  return {
+    promotions: rows.map(publicPromotion_)
+  };
+}
+
+function createBusinessPromotion_(context, data) {
+  requireFields_(data, ['title']);
+
+  var promotion = {
+    promotion_id: generateId_('PRO'),
+    business_id: context.user.business_id,
+    title: sanitizeText_(data.title, 140),
+    description: sanitizeText_(data.description || '', 300),
+    image_url: sanitizeText_(data.image_url || '', 500),
+    promotion_type: normalizePromotionType_(data.promotion_type),
+    visibility_status: data.start_date ? 'scheduled' : 'active',
+    surprise_enabled: isTruthy_(data.surprise_enabled) ? 'true' : '',
+    coupon_label: sanitizeText_(data.coupon_label || '', 140),
+    start_date: sanitizeDateText_(data.start_date || ''),
+    end_date: sanitizeDateText_(data.end_date || ''),
+    status: 'active',
+    created_at: nowIso_()
+  };
+
+  appendObject_('PROMOTIONS', promotion);
+
+  logActivity_(context.user.user_id, context.user.business_id, 'promotion_created', 'promotion', promotion.promotion_id, {
+    promotion_type: promotion.promotion_type,
+    start_date: promotion.start_date,
+    end_date: promotion.end_date
+  });
+
+  return {
+    promotion: publicPromotion_(promotion)
+  };
+}
+
+function updateBusinessPromotionStatus_(context, data) {
+  requireFields_(data, ['promotion_id', 'status']);
+
+  var promotion = findRowByValue_('PROMOTIONS', 'promotion_id', data.promotion_id);
+
+  if (!promotion || promotion.business_id !== context.user.business_id) {
+    throw appError_('Promocion no encontrada.', 'promotion_not_found');
+  }
+
+  var status = String(data.status || '').toLowerCase() === 'disabled' ? 'disabled' : 'active';
+  var nextPromotion = Object.assign({}, promotion, {
+    status: status
+  });
+
+  updateRowByNumber_('PROMOTIONS', promotion._rowNumber, {
+    status: status,
+    visibility_status: status === 'active' ? getPromotionScheduleState_(nextPromotion) : 'disabled'
+  });
+
+  logActivity_(context.user.user_id, context.user.business_id, 'promotion_status_updated', 'promotion', promotion.promotion_id, {
+    status: status
+  });
+
+  return {
+    promotion: publicPromotion_(findRowByValue_('PROMOTIONS', 'promotion_id', data.promotion_id))
+  };
+}
+
+function publicPromotion_(promotion) {
+  var business = promotion.business_id ? getBusinessById_(promotion.business_id) : null;
+  var scheduleState = getPromotionScheduleState_(promotion);
+
+  return {
+    promotion_id: promotion.promotion_id,
+    business_id: promotion.business_id || '',
+    business: business ? publicBusiness_(business) : null,
+    title: promotion.title || '',
+    description: promotion.description || '',
+    image_url: promotion.image_url || '',
+    promotion_type: promotion.promotion_type || 'standard',
+    type: promotion.promotion_type === 'surprise' ? 'surprise_coupon' : 'promotion',
+    visibility_status: scheduleState,
+    surprise_enabled: isTruthy_(promotion.surprise_enabled),
+    coupon_label: promotion.coupon_label || '',
+    start_date: promotion.start_date || '',
+    end_date: promotion.end_date || '',
+    status: promotion.status || '',
+    created_at: promotion.created_at || ''
+  };
+}
+
+function normalizePromotionType_(value) {
+  var text = String(value || '').trim().toLowerCase();
+
+  if (text === 'surprise' || text === 'sorpresa' || text === 'coupon' || text === 'cupon') {
+    return 'surprise';
+  }
+
+  return 'standard';
 }
 
 // ==================================================

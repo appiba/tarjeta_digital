@@ -9,6 +9,15 @@
 
   async function initWallet() {
     init();
+    var fallbackWallet = getFallbackWallet();
+    var session = AppAPI.getCustomerSession();
+
+    if ((!session || !session.token) && fallbackWallet) {
+      currentWallet = fallbackWallet;
+      paintWallet(fallbackWallet);
+      return;
+    }
+
     await withCustomerSession(async function(session) {
       var result = await AppAPI.apiRequest('getCustomerWallet', {
         customer_token: session.token
@@ -45,12 +54,38 @@
       paintCard(result.data);
       preserveWalletInNavigation(result.data.customer && result.data.customer.wallet_id);
     } catch (error) {
-      AppUtils.toast(error.message, 'error');
+      var fallbackCard = getFallbackCard(cardId);
+
+      if (fallbackCard) {
+        paintCard(fallbackCard);
+        preserveWalletInNavigation(fallbackCard.customer && fallbackCard.customer.wallet_id);
+      } else {
+        AppUtils.toast(error.message, 'error');
+      }
     }
   }
 
   async function initPage(pageName) {
     init();
+    var fallbackWallet = getFallbackWallet();
+    var session = AppAPI.getCustomerSession();
+
+    if ((!session || !session.token) && fallbackWallet) {
+      if (pageName === 'promotions') {
+        paintPromotions(collectFallbackPromotions(fallbackWallet));
+      } else if (pageName === 'history') {
+        paintHistory([]);
+      } else if (pageName === 'profile') {
+        paintProfile(fallbackWallet.customer || {});
+      } else if (pageName === 'qr') {
+        paintWalletQr(fallbackWallet.wallet_qr || {
+          wallet_id: fallbackWallet.wallet_id,
+          display: fallbackWallet.wallet_id
+        }, fallbackWallet.customer || {});
+      }
+
+      return;
+    }
 
     await withCustomerSession(async function(session) {
       var action = pageAction(pageName);
@@ -122,6 +157,77 @@
       '<a class="button button--primary" href="../index.html">Ir al inicio</a>' +
       '</section>';
     AppUtils.mountIcons();
+  }
+
+  function getFallbackWallet() {
+    try {
+      return JSON.parse(window.localStorage.getItem('loyalty_fallback_wallet') || 'null');
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function getFallbackCard(cardId) {
+    var wallet = getFallbackWallet();
+    var cards = wallet && wallet.cards ? wallet.cards : [];
+
+    for (var index = 0; index < cards.length; index += 1) {
+      if (cards[index].card && cards[index].card.card_id === cardId) {
+        return {
+          business: cards[index].business || {},
+          customer: wallet.customer || {},
+          card: cards[index].card || {},
+          program: cards[index].program || {},
+          reward: cards[index].reward || {},
+          welcome_reward: cards[index].welcome_reward || {},
+          coupons: cards[index].coupons || [],
+          available_coupons: cards[index].available_coupons || [],
+          promotions: collectFallbackPromotions(wallet),
+          history: [],
+          wallet_qr: wallet.wallet_qr || {
+            wallet_id: wallet.wallet_id,
+            display: wallet.wallet_id
+          }
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function collectFallbackPromotions(wallet) {
+    var promotions = [];
+    var cards = wallet && wallet.cards ? wallet.cards : [];
+    var localPromotions = [];
+
+    try {
+      localPromotions = JSON.parse(window.localStorage.getItem('loyalty_fallback_promotions') || '[]');
+    } catch (error) {
+      localPromotions = [];
+    }
+
+    cards.forEach(function(item) {
+      localPromotions.forEach(function(promotion) {
+        promotions.push(Object.assign({
+          business: item.business || {}
+        }, promotion));
+      });
+
+      (item.available_coupons || item.coupons || []).forEach(function(coupon) {
+        promotions.push({
+          promotion_id: coupon.coupon_id || coupon.title,
+          type: 'coupon',
+          business: item.business || {},
+          title: coupon.title || 'Cupon disponible',
+          description: coupon.description || 'Beneficio de tu tarjeta.',
+          status: coupon.status || 'available',
+          start_date: coupon.created_at || '',
+          end_date: ''
+        });
+      });
+    });
+
+    return promotions;
   }
 
   function paintWallet(data) {
@@ -253,10 +359,12 @@
 
   function renderPromotionItem(promotion) {
     var business = promotion.business || {};
-    var icon = promotion.type === 'coupon' ? 'ticket' : initials(business.business_name || 'L');
+    var icon = promotion.type === 'coupon' || promotion.type === 'surprise_coupon' ? 'ticket' : initials(business.business_name || 'L');
+    var state = promotion.visibility_status || promotion.status || 'active';
+    var typeLabel = promotion.type === 'surprise_coupon' || promotion.promotion_type === 'surprise' ? 'Cupon sorpresa' : (promotion.type === 'coupon' ? 'Cupon' : 'Promocion');
     return '<article class="promotion-card">' +
       '<div class="promotion-card__image" style="background:linear-gradient(135deg,' + escapeAttr(business.primary_color || '#1f5eff') + ',' + escapeAttr(business.secondary_color || '#12b981') + ')">' + escapeHtml(icon) + '</div>' +
-      '<div><span class="badge">' + escapeHtml(business.business_name || 'Negocio') + '</span><h2>' + escapeHtml(promotion.title || 'Promocion') + '</h2><p>' + escapeHtml(promotion.description || '') + '</p></div>' +
+      '<div><span class="badge">' + escapeHtml(typeLabel + ' / ' + promotionStateLabel(state)) + '</span><h2>' + escapeHtml(promotion.title || 'Promocion') + '</h2><p>' + escapeHtml(promotion.description || '') + '</p><p>' + escapeHtml(dateRangeLabel(promotion)) + '</p></div>' +
       '</article>';
   }
 
@@ -264,7 +372,7 @@
     var business = coupon.business || {};
     return '<article class="history-card">' +
       '<div class="history-card__icon"><i data-lucide="ticket"></i></div>' +
-      '<div><span class="badge">' + escapeHtml(statusLabel(coupon.status)) + '</span><h2>' + escapeHtml(coupon.title || 'Cupon') + '</h2><p>' + escapeHtml(coupon.description || business.business_name || '') + '</p></div>' +
+      '<div><span class="badge">' + escapeHtml(statusLabel(coupon.status)) + '</span><h2>' + escapeHtml(coupon.title || 'Cupon') + '</h2><p>' + escapeHtml(coupon.description || business.business_name || '') + '</p><p>' + escapeHtml(coupon.redeemed_at ? 'Canjeado: ' + AppUtils.formatDate(coupon.redeemed_at) : 'Listo para usar en el local') + '</p></div>' +
       '</article>';
   }
 
@@ -403,6 +511,34 @@
     }
 
     return status || 'No configurado';
+  }
+
+  function promotionStateLabel(state) {
+    if (state === 'scheduled') {
+      return 'Programada';
+    }
+
+    if (state === 'expired') {
+      return 'Finalizada';
+    }
+
+    if (state === 'disabled') {
+      return 'Deshabilitada';
+    }
+
+    if (state === 'redeemed') {
+      return 'Canjeada';
+    }
+
+    return 'Activa';
+  }
+
+  function dateRangeLabel(promotion) {
+    if (!promotion.start_date && !promotion.end_date) {
+      return 'Sin calendario definido';
+    }
+
+    return 'Vigencia: ' + (promotion.start_date ? AppUtils.formatDate(promotion.start_date) : 'ahora') + ' - ' + (promotion.end_date ? AppUtils.formatDate(promotion.end_date) : 'sin fin');
   }
 
   function firstAvailableCoupon(coupons) {

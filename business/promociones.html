@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Promociones | Loyalty</title>
-  <link rel="stylesheet" href="../assets/css/main.css">
-  <link rel="stylesheet" href="../assets/css/business.css">
+  <link rel="stylesheet" href="../assets/css/main.css?v=wallet-v17">
+  <link rel="stylesheet" href="../assets/css/business.css?v=wallet-v17">
 </head>
 <body class="business-accent" data-root="../">
   <div class="app-shell">
@@ -32,28 +32,57 @@
         <div class="user-chip"><span data-user-name>Usuario</span></div>
       </section>
       <section class="panel-card">
-        <div class="panel-heading" style="margin-bottom:0;">
+        <div class="panel-heading">
           <div>
             <h2>Promociones</h2>
-            <p>Crea campanas visibles para clientes.</p>
+            <p>Crea campanas, cupones sorpresa y promociones por fechas especiales.</p>
           </div>
-          <button class="button button--primary" type="button" disabled>Nueva promocion</button>
         </div>
+        <form class="form" data-business-promotion-form>
+          <div class="section-grid">
+            <div class="field">
+              <label for="title">Titulo</label>
+              <input id="title" name="title" type="text" placeholder="2x1 por aniversario" required>
+            </div>
+            <div class="field">
+              <label for="promotion_type">Tipo</label>
+              <select id="promotion_type" name="promotion_type">
+                <option value="standard">Promocion normal</option>
+                <option value="surprise">Cupon sorpresa</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="coupon_label">Nombre del cupon</label>
+              <input id="coupon_label" name="coupon_label" type="text" placeholder="Cupon sorpresa de cumpleanos">
+            </div>
+            <div class="field">
+              <label for="start_date">Se activa desde</label>
+              <input id="start_date" name="start_date" type="date">
+            </div>
+            <div class="field">
+              <label for="end_date">Termina</label>
+              <input id="end_date" name="end_date" type="date">
+            </div>
+            <label class="check-row">
+              <input name="surprise_enabled" type="checkbox">
+              <span>Mostrar como sorpresa hasta estar activa</span>
+            </label>
+          </div>
+          <div class="field">
+            <label for="description">Descripcion</label>
+            <textarea id="description" name="description" rows="3" placeholder="Disponible para clientes con Wallet activa."></textarea>
+          </div>
+          <button class="button button--primary" type="submit"><i data-lucide="calendar-plus"></i>Guardar promocion</button>
+        </form>
       </section>
-      <section class="empty-state">
-        <div>
-          <i data-lucide="megaphone"></i>
-          <h2>Sin promociones</h2>
-          <p>Cuando existan promociones reales apareceran aqui con estado activa, programada o finalizada.</p>
-        </div>
-      </section>
+      <section class="client-list" data-business-promotions-list></section>
     </main>
   </div>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script src="../assets/js/utils.js"></script>
-  <script src="../assets/js/api.js"></script>
-  <script src="../assets/js/auth.js"></script>
-  <script src="../assets/js/business.js"></script>
-  <script>BusinessApp.init('Promociones', ['business_owner']);</script>
+  <script src="../assets/js/utils.js?v=wallet-v17"></script>
+  <script src="../assets/js/api.js?v=wallet-v17"></script>
+  <script src="../assets/js/auth.js?v=wallet-v17"></script>
+  <script src="../assets/js/business.js?v=wallet-v17"></script>
+  <script>BusinessApp.initPromotions();</script>
 </body>
 </html>

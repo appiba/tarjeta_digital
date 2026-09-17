@@ -248,6 +248,7 @@
     var cardUrl = data.card_url || walletUrl;
     var coupons = data.available_coupons || data.coupons || [];
     var firstCoupon = coupons.length ? coupons[0] : null;
+    var fallbackWallet = saveLocalWallet(data);
 
     showStep('result');
     box.innerHTML = '<h2>' + escapeHtml(title || 'Wallet lista') + '</h2>' +
@@ -268,12 +269,114 @@
     AppUtils.mountIcons();
 
     window.setTimeout(function() {
-      var targetUrl = cardUrl || walletUrl;
+      var targetUrl = cardUrl || (fallbackWallet && fallbackWallet.card_url) || walletUrl;
 
       if (targetUrl) {
         window.location.href = targetUrl;
       }
     }, 500);
+  }
+
+  function saveLocalWallet(data) {
+    var session = data.customer_session || {};
+    var business = data.business || currentBusiness || {};
+    var customer = data.customer || {};
+    var card = data.card || {};
+    var program = data.program || currentProgram || {};
+    var reward = data.reward || currentReward || {};
+    var walletId = customer.wallet_id || session.wallet_id || ('LOCAL-' + normalizePhoneForId(currentPhone));
+    var cardId = card.card_id || ('LOCAL-CARD-' + normalizePhoneForId(currentPhone) + '-' + (business.business_code || currentBusinessCode));
+    var cardUrl = data.card_url || ('../client/card.html?card=' + encodeURIComponent(cardId) + '&local=1');
+    var wallet = {
+      saved_at: new Date().toISOString(),
+      business_code: business.business_code || currentBusinessCode,
+      business_id: business.business_id || '',
+      customer: {
+        customer_id: customer.customer_id || ('LOCAL-CUS-' + normalizePhoneForId(currentPhone)),
+        wallet_id: walletId,
+        full_name: customer.full_name || 'Cliente Loyalty',
+        phone: customer.phone || currentPhone,
+        phone_normalized: customer.phone_normalized || currentPhone,
+        email: customer.email || '',
+        birthday: customer.birthday || '',
+        status: 'active'
+      },
+      wallet_id: walletId,
+      wallet_url: data.wallet_url || '../client/?local=1',
+      card_url: cardUrl,
+      cards: [{
+        business: business,
+        program: program,
+        reward: reward,
+        welcome_reward: data.welcome_reward || { enabled: false, status: 'none' },
+        coupons: data.coupons || data.available_coupons || [],
+        available_coupons: data.available_coupons || data.coupons || [],
+        card: Object.assign({
+          card_id: cardId,
+          customer_id: customer.customer_id || '',
+          business_id: business.business_id || '',
+          program_id: program.program_id || '',
+          points: 0,
+          stamps: 0,
+          visits: 0,
+          status: 'active',
+          current: 0,
+          goal: program.goal || 10,
+          progress_percent: 0
+        }, card),
+        card_url: cardUrl
+      }]
+    };
+
+    try {
+      window.localStorage.setItem('loyalty_fallback_wallet', JSON.stringify(wallet));
+      upsertLocalBusinessCustomer(wallet);
+    } catch (error) {
+      console.warn('No se pudo guardar Wallet local', error);
+    }
+
+    return wallet;
+  }
+
+  function upsertLocalBusinessCustomer(wallet) {
+    var key = 'loyalty_fallback_business_customers';
+    var rows = [];
+
+    try {
+      rows = JSON.parse(window.localStorage.getItem(key) || '[]');
+    } catch (error) {
+      rows = [];
+    }
+
+    var cardPayload = wallet.cards && wallet.cards[0] ? wallet.cards[0] : {};
+    var row = {
+      saved_at: wallet.saved_at,
+      business_code: wallet.business_code || '',
+      business_id: wallet.business_id || '',
+      customer: wallet.customer,
+      business: cardPayload.business || {},
+      card: cardPayload.card || {},
+      program: cardPayload.program || {},
+      reward: cardPayload.reward || {},
+      welcome_reward: cardPayload.welcome_reward || {},
+      coupons: cardPayload.coupons || [],
+      available_coupons: cardPayload.available_coupons || []
+    };
+    var existingIndex = rows.findIndex(function(item) {
+      return item.business_code === row.business_code && item.customer && row.customer && item.customer.phone === row.customer.phone;
+    });
+
+    if (existingIndex === -1) {
+      rows.unshift(row);
+    } else {
+      rows[existingIndex] = row;
+    }
+
+    window.localStorage.setItem(key, JSON.stringify(rows.slice(0, 100)));
+  }
+
+  function normalizePhoneForId(phone) {
+    return String(phone || '').replace(/\D/g, '') || String(Date.now());
   }
 
   function bindDynamicResultButtons(root) {

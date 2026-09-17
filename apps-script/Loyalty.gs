@@ -301,23 +301,13 @@ function appendTransaction_(values) {
   return transaction;
 }
 
-function getPromotionsForBusiness_(businessId) {
+function getPromotionsForBusiness_(businessId, includeAll) {
   return findRowsByValue_('PROMOTIONS', 'business_id', businessId)
     .filter(function(promotion) {
-      return isPromotionVisible_(promotion);
+      return includeAll || isPromotionVisible_(promotion);
     })
     .map(function(promotion) {
-      var business = getBusinessById_(promotion.business_id);
-      return {
-        promotion_id: promotion.promotion_id,
-        business: publicBusiness_(business || {}),
-        title: promotion.title || '',
-        description: promotion.description || '',
-        image_url: promotion.image_url || '',
-        start_date: promotion.start_date || '',
-        end_date: promotion.end_date || '',
-        status: promotion.status || ''
-      };
+      return publicPromotion_(promotion);
     });
 }
 
@@ -330,7 +320,7 @@ function getWalletPromotionsForCustomer_(customerId) {
       return;
     }
 
-    getPromotionsForBusiness_(card.business_id).forEach(function(promotion) {
+    getPromotionsForBusiness_(card.business_id, true).forEach(function(promotion) {
       if (!seen[promotion.promotion_id]) {
         seen[promotion.promotion_id] = true;
         promotions.push(promotion);

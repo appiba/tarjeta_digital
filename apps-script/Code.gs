@@ -114,6 +114,12 @@ function routeAction_(request) {
       return getBusinessHome_(requireSession_(request.token, ['business_owner', 'staff']));
     case 'listBusinessCustomers':
       return listBusinessCustomers_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
+    case 'listBusinessPromotions':
+      return listBusinessPromotions_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
+    case 'createBusinessPromotion':
+      return createBusinessPromotion_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
+    case 'updateBusinessPromotionStatus':
+      return updateBusinessPromotionStatus_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
     case 'scanWallet':
       return scanWallet_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
     case 'getBusinessCustomerCard':
