@@ -3,69 +3,211 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#1f5eff">
+  <meta name="theme-color" content="#0f172a">
   <title>Loyalty</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="assets/css/main.css">
 </head>
-<body data-root="">
-  <header class="topbar">
-    <div class="topbar__inner">
-      <a class="brand" href="index.html" aria-label="Loyalty">
-        <span class="brand__mark">L</span>
-        <span>Loyalty</span>
-      </a>
-      <div class="nav-actions">
-        <a class="button button--ghost" href="solicitud.html">
-          <i data-lucide="store"></i>
-          Solicitar acceso
-        </a>
-        <a class="button button--primary" href="login.html">
-          <i data-lucide="log-in"></i>
-          Iniciar sesion
-        </a>
-      </div>
-    </div>
-  </header>
-
-  <main class="page hero">
-    <section class="hero__grid">
-      <div>
-        <span class="badge">Plataforma completa</span>
-        <h1>Tarjetas digitales de lealtad para negocios locales.</h1>
-        <p>Base web publicada con GitHub Pages, preparada para autenticacion con Google Apps Script y Google Sheets.</p>
-        <div class="hero__actions">
-          <a class="button button--primary" href="login.html">Entrar al panel</a>
-          <a class="button button--ghost" href="solicitud.html">Crear solicitud</a>
-        </div>
+<body class="home-showcase" data-root="">
+  <main class="showcase">
+    <aside class="showcase-rail">
+      <div class="showcase-rail__brand">
+        <i data-lucide="crown"></i>
+        <strong>LOYALTY</strong>
+        <span>CLIENTES MAS CERCA</span>
       </div>
 
-      <div class="preview-card" aria-label="Vista previa de tarjeta digital">
-        <div class="loyalty-preview">
-          <div class="loyalty-preview__top">
-            <div class="loyalty-preview__logo">L</div>
-            <div class="qr-box">QR</div>
-          </div>
+      <p class="showcase-rail__lead">Una plataforma.<br>Todos los negocios.<br>Clientes mas cerca.</p>
+
+      <ul class="showcase-rail__list">
+        <li><i data-lucide="badge"></i><span>Tarjetas digitales</span></li>
+        <li><i data-lucide="users"></i><span>Puntos, sellos o visitas</span></li>
+        <li><i data-lucide="badge-percent"></i><span>Promociones</span></li>
+        <li><i data-lucide="store"></i><span>Panel para negocios</span></li>
+        <li><i data-lucide="shield-check"></i><span>Control administrador</span></li>
+        <li><i data-lucide="sparkles"></i><span>Rapida y sencilla</span></li>
+      </ul>
+
+      <div class="showcase-rail__note">Lealtad que impulsa negocios</div>
+    </aside>
+
+    <section class="showcase-main">
+      <div class="showcase-actions" aria-label="Accesos principales">
+        <a class="button button--ghost" href="solicitud.html"><i data-lucide="store"></i>Solicitar acceso</a>
+        <a class="button button--primary" href="login.html"><i data-lucide="log-in"></i>Iniciar sesion</a>
+      </div>
+
+      <section class="showcase-band showcase-band--client" aria-labelledby="client-title">
+        <div class="showcase-pill showcase-pill--blue">
+          <i data-lucide="user-round"></i>
           <div>
-            <p style="color: rgba(255,255,255,.78); margin: 0;">Tu negocio</p>
-            <h2 style="font-size: 2rem; margin: 8px 0 0;">Hola, cliente</h2>
-            <p style="color: rgba(255,255,255,.78); margin: 8px 0 0;">0 de 10 sellos</p>
-            <div class="stamp-row" aria-hidden="true">
-              <span class="stamp"></span>
-              <span class="stamp"></span>
-              <span class="stamp"></span>
-              <span class="stamp"></span>
-              <span class="stamp"></span>
-              <span class="stamp"></span>
-              <span class="stamp"></span>
-              <span class="stamp"></span>
-              <span class="stamp"></span>
-              <span class="stamp"></span>
+            <h1 id="client-title">APP DEL CLIENTE</h1>
+            <span>Simple. Rapida. Siempre contigo.</span>
+          </div>
+        </div>
+        <p class="showcase-script">Experiencias que se repiten</p>
+
+        <div class="phone-gallery">
+          <article class="phone-demo phone-demo--welcome">
+            <div class="phone-demo__screen">
+              <div class="phone-hero">
+                <i data-lucide="crown"></i>
+                <h2>Tu negocio</h2>
+                <p>Mas cerca de tus clientes</p>
+              </div>
+              <div class="phone-card phone-card--floating">
+                <div><i data-lucide="badge-check"></i><span>Acumula sellos</span></div>
+                <div><i data-lucide="gift"></i><span>Obten premios</span></div>
+                <div><i data-lucide="megaphone"></i><span>Promociones exclusivas</span></div>
+                <a class="mock-button" href="solicitud.html">Crear mi tarjeta</a>
+              </div>
+            </div>
+          </article>
+
+          <article class="phone-demo phone-demo--card">
+            <div class="phone-demo__screen">
+              <div class="phone-title"><i data-lucide="crown"></i><span>Tarjeta de lealtad</span></div>
+              <h2>Hola, cliente</h2>
+              <p>0 de 10 sellos</p>
+              <div class="bean-line" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <div class="reward-mini"><i data-lucide="gift"></i><strong>Premio configurado</strong></div>
+              <div class="qr-mini" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <nav class="phone-nav"><i data-lucide="badge"></i><i data-lucide="megaphone"></i><i data-lucide="clock-3"></i><i data-lucide="user"></i></nav>
+            </div>
+          </article>
+
+          <article class="phone-demo">
+            <div class="phone-demo__screen phone-demo__screen--light">
+              <div class="phone-heading">Promociones</div>
+              <div class="segmented"><span class="is-active">Activas</span><span>Todas</span></div>
+              <div class="promo-tile promo-tile--coffee"><strong>Beneficio activo</strong><span>Valido este mes</span></div>
+              <div class="promo-tile promo-tile--dessert"><strong>Premio especial</strong><span>Disponible al completar meta</span></div>
+              <div class="promo-tile promo-tile--drink"><strong>Descuento</strong><span>Promocion del negocio</span></div>
+              <nav class="phone-nav"><i data-lucide="badge"></i><i data-lucide="megaphone"></i><i data-lucide="clock-3"></i><i data-lucide="user"></i></nav>
+            </div>
+          </article>
+
+          <article class="phone-demo">
+            <div class="phone-demo__screen phone-demo__screen--light">
+              <div class="phone-heading">Historial</div>
+              <div class="history-item"><i data-lucide="plus"></i><strong>+1 sello</strong><span>Movimiento reciente</span></div>
+              <div class="history-item"><i data-lucide="plus"></i><strong>+1 visita</strong><span>Registro del local</span></div>
+              <div class="history-item"><i data-lucide="gift"></i><strong>Premio canjeado</strong><span>Canje confirmado</span></div>
+              <div class="history-item"><i data-lucide="badge"></i><strong>Registro inicial</strong><span>Tarjeta creada</span></div>
+              <nav class="phone-nav"><i data-lucide="badge"></i><i data-lucide="megaphone"></i><i data-lucide="clock-3"></i><i data-lucide="user"></i></nav>
+            </div>
+          </article>
+
+          <article class="phone-demo">
+            <div class="phone-demo__screen phone-demo__screen--light">
+              <div class="phone-heading">Mi perfil <span>Editar</span></div>
+              <div class="avatar-demo"></div>
+              <div class="profile-row"><span>Nombre</span><strong>Cliente</strong></div>
+              <div class="profile-row"><span>WhatsApp</span><strong>Registrado</strong></div>
+              <div class="profile-row"><span>Correo</span><strong>Opcional</strong></div>
+              <div class="birthday-row"><i data-lucide="gift"></i><span>Beneficios especiales</span></div>
+              <nav class="phone-nav"><i data-lucide="badge"></i><i data-lucide="megaphone"></i><i data-lucide="clock-3"></i><i data-lucide="user"></i></nav>
+            </div>
+          </article>
+
+          <article class="phone-demo phone-demo--unlock">
+            <div class="phone-demo__screen phone-demo__screen--light">
+              <div class="confetti" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+              <i data-lucide="gift" class="unlock-icon"></i>
+              <h2>Premio desbloqueado</h2>
+              <p>Meta completada. Listo para canjear.</p>
+              <div class="reward-photo" aria-hidden="true"></div>
+              <strong>Beneficio del negocio</strong>
+              <a class="mock-button" href="client/index.html">Ver mi tarjeta</a>
+            </div>
+          </article>
+        </div>
+
+        <div class="showcase-captions" aria-label="Flujo del cliente">
+          <span><strong>1</strong> Registro del cliente</span>
+          <span><strong>2</strong> Tarjeta digital</span>
+          <span><strong>3</strong> Promociones</span>
+          <span><strong>4</strong> Historial</span>
+          <span><strong>5</strong> Perfil</span>
+          <span><strong>6</strong> Premio desbloqueado</span>
+        </div>
+      </section>
+
+      <section class="showcase-panels">
+        <article class="showcase-panel showcase-panel--business">
+          <div class="showcase-pill showcase-pill--green">
+            <i data-lucide="store"></i>
+            <div>
+              <h2>PANEL DEL NEGOCIO</h2>
+              <span>Gestiona tu lealtad de forma simple y efectiva.</span>
             </div>
           </div>
-          <strong>Premio configurado por el negocio</strong>
-        </div>
-      </div>
+          <div class="business-composition">
+            <div class="laptop-demo">
+              <div class="laptop-demo__screen">
+                <aside><strong>Loyalty</strong><span>Inicio</span><span>Mi tarjeta</span><span>Clientes</span><span>Promociones</span><span>Transacciones</span></aside>
+                <section>
+                  <div class="dashboard-head"><strong>Dashboard</strong><span>Este mes</span></div>
+                  <div class="metric-grid"><b>0</b><b>0</b><b>0</b><b>0</b></div>
+                  <div class="chart-demo"><span></span><span></span><span></span><span></span><span></span></div>
+                  <div class="list-demo"><span></span><span></span><span></span></div>
+                </section>
+              </div>
+            </div>
+            <div class="phone-demo phone-demo--small phone-demo--scanner">
+              <div class="phone-demo__screen">
+                <h3>Escanear cliente</h3>
+                <div class="scanner-box"><div class="qr-mini"></div></div>
+                <span class="mock-button mock-button--dark">Ingresar codigo manual</span>
+              </div>
+            </div>
+            <div class="phone-demo phone-demo--small">
+              <div class="phone-demo__screen phone-demo__screen--light">
+                <div class="phone-heading">Ficha cliente</div>
+                <div class="avatar-demo avatar-demo--small"></div>
+                <div class="mini-score"><strong>0</strong><strong>0</strong><strong>0</strong></div>
+                <span class="mock-button">+1 Sello</span>
+                <span class="mock-button mock-button--soft">+1 Visita</span>
+                <span class="mock-button mock-button--gold">Canjear premio</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="showcase-panel showcase-panel--admin">
+          <div class="showcase-pill showcase-pill--purple">
+            <i data-lucide="crown"></i>
+            <div>
+              <h2>PANEL ADMINISTRADOR</h2>
+              <span>Control total de la plataforma.</span>
+            </div>
+          </div>
+          <div class="laptop-demo laptop-demo--admin">
+            <div class="laptop-demo__screen">
+              <aside><strong>LOYALTY</strong><span>Dashboard</span><span>Solicitudes</span><span>Negocios</span><span>Clientes</span><span>Reportes</span></aside>
+              <section>
+                <div class="dashboard-head"><strong>Dashboard</strong><span>Admin</span></div>
+                <div class="metric-grid metric-grid--admin"><b>0</b><b>0</b><b>0</b><b>0</b></div>
+                <div class="chart-demo chart-demo--purple"><span></span><span></span><span></span><span></span><span></span></div>
+                <div class="requests-demo">
+                  <div><i data-lucide="store"></i><strong>Solicitudes recientes</strong><span>Pendiente</span></div>
+                  <div><i data-lucide="users"></i><strong>Negocios activos</strong><span>Activo</span></div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </article>
+      </section>
     </section>
   </main>
 
