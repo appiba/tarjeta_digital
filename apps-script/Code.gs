@@ -62,6 +62,26 @@ function routeAction_(request) {
       return registerBusinessRequest_(request.data);
     case 'getPublicBusiness':
       return getPublicBusiness_(request.data);
+    case 'lookupCustomerPhone':
+      return lookupCustomerPhone_(request.data);
+    case 'registerCustomerWallet':
+      return registerCustomerWallet_(request.data);
+    case 'attachBusinessCard':
+      return attachBusinessCard_(request.data);
+    case 'getCustomerWallet':
+      return getCustomerWallet_(request.data);
+    case 'getWalletCards':
+      return getWalletCards_(request.data);
+    case 'getWalletPromotions':
+      return getWalletPromotions_(request.data);
+    case 'getWalletHistory':
+      return getWalletHistory_(request.data);
+    case 'getWalletQr':
+      return getWalletQr_(request.data);
+    case 'requestCustomerOtp':
+      return requestCustomerOtp_(request.data);
+    case 'verifyCustomerOtp':
+      return verifyCustomerOtp_(request.data);
     case 'registerCustomer':
       return registerCustomer_(request.data);
     case 'getPublicCard':
@@ -80,8 +100,18 @@ function routeAction_(request) {
       return listBusinesses_(requireSession_(request.token, ['super_admin']), request.data);
     case 'resetBusinessOwnerPassword':
       return resetBusinessOwnerPassword_(requireSession_(request.token, ['super_admin']), request.data);
+    case 'listAdminCustomers':
+      return listAdminCustomers_(requireSession_(request.token, ['super_admin']), request.data);
     case 'getBusinessHome':
       return getBusinessHome_(requireSession_(request.token, ['business_owner', 'staff']));
+    case 'listBusinessCustomers':
+      return listBusinessCustomers_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
+    case 'scanWallet':
+      return scanWallet_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
+    case 'getBusinessCustomerCard':
+      return getBusinessCustomerCard_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
+    case 'applyBusinessCustomerAction':
+      return applyBusinessCustomerAction_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
     default:
       throw appError_('Accion no implementada: ' + request.action, 'not_implemented');
   }

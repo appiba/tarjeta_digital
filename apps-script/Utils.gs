@@ -32,7 +32,20 @@ var SHEET_SCHEMAS = Object.freeze({
     'created_at',
     'last_login'
   ],
-  CUSTOMERS: ['customer_id', 'full_name', 'phone', 'email', 'birthday', 'created_at', 'status'],
+  CUSTOMERS: [
+    'customer_id',
+    'wallet_id',
+    'full_name',
+    'phone',
+    'phone_normalized',
+    'email',
+    'birthday',
+    'avatar_url',
+    'status',
+    'created_at',
+    'updated_at',
+    'last_access_at'
+  ],
   CUSTOMER_CARDS: [
     'card_id',
     'customer_id',
@@ -42,6 +55,7 @@ var SHEET_SCHEMAS = Object.freeze({
     'stamps',
     'visits',
     'lifetime_points',
+    'welcome_reward_status',
     'status',
     'created_at',
     'updated_at'
@@ -54,6 +68,11 @@ var SHEET_SCHEMAS = Object.freeze({
     'goal',
     'points_per_dollar',
     'reward_id',
+    'welcome_reward_enabled',
+    'welcome_reward_type',
+    'welcome_reward_value',
+    'welcome_reward_title',
+    'welcome_reward_description',
     'status',
     'created_at',
     'updated_at'
@@ -72,6 +91,7 @@ var SHEET_SCHEMAS = Object.freeze({
     'previous_balance',
     'new_balance',
     'notes',
+    'reward_id',
     'created_at'
   ],
   REWARDS: [
@@ -129,6 +149,16 @@ var SHEET_SCHEMAS = Object.freeze({
     'reviewed_at',
     'reviewed_by',
     'rejection_reason'
+  ],
+  CUSTOMER_SESSIONS: [
+    'session_id',
+    'customer_id',
+    'wallet_id',
+    'token',
+    'created_at',
+    'last_access_at',
+    'expires_at',
+    'status'
   ],
   SESSIONS: ['session_id', 'user_id', 'business_id', 'role', 'token', 'created_at', 'expires_at', 'status'],
   ACTIVITY_LOG: ['log_id', 'user_id', 'business_id', 'action', 'entity', 'entity_id', 'details', 'created_at']
@@ -491,7 +521,24 @@ function normalizeEmail_(email) {
 }
 
 function normalizePhone_(phone) {
-  return String(phone || '').replace(/[^\d+]/g, '');
+  var raw = String(phone || '').trim();
+  var digits = raw.replace(/\D/g, '');
+
+  if (!digits) {
+    return '';
+  }
+
+  if (digits.indexOf('00') === 0) {
+    digits = digits.substring(2);
+  }
+
+  if (digits.length === 10 && digits.charAt(0) === '0') {
+    digits = '593' + digits.substring(1);
+  } else if (digits.length === 9 && digits.charAt(0) === '9') {
+    digits = '593' + digits;
+  }
+
+  return '+' + digits;
 }
 
 function safeJsonString_(value) {

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mi tarjeta | Loyalty</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/client.css">
+</head>
+<body data-root="../">
+  <main class="client-shell">
+    <section class="client-screen">
+      <div class="client-card">
+        <div class="client-card__bar">
+          <a href="index.html" aria-label="Volver"><i data-lucide="chevron-left"></i></a>
+          <strong>Mi tarjeta de lealtad</strong>
+          <a href="qr.html" aria-label="Mi QR"><i data-lucide="qr-code"></i></a>
+        </div>
+        <div class="coffee-card" data-client-card>
+          <div class="coffee-card__hero">
+            <div>
+              <div class="loyalty-preview__logo" data-business-initials>L</div>
+              <h1 data-business-name>Loyalty</h1>
+              <p data-business-type>Tarjeta digital</p>
+            </div>
+          </div>
+          <div class="coffee-card__body">
+            <strong>Hola, <span data-customer-name>Cliente</span></strong>
+            <div><strong data-progress-label>0 de 10 sellos</strong> <span style="float:right;" data-progress-percent>0%</span></div>
+            <div class="coffee-beans" data-progress-beans></div>
+            <p data-progress-left>Presenta esta tarjeta en el local.</p>
+            <div class="reward-strip"><i data-lucide="gift"></i><strong>Premio: <span data-reward-name>Premio especial</span></strong></div>
+            <div class="reward-strip reward-strip--soft"><i data-lucide="sparkles"></i><strong><span data-welcome-title>Beneficio de bienvenida</span>: <span data-welcome-status>No configurado</span></strong></div>
+            <div class="visual-qr" aria-label="QR visual">
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <p style="text-align:center;">Mi QR Loyalty: <span data-wallet-display></span></p>
+          </div>
+        </div>
+        <section class="mini-promo">
+          <strong>Promociones del negocio</strong>
+          <div class="client-list" data-card-promotions></div>
+        </section>
+        <section class="mini-promo">
+          <strong>Historial de esta tarjeta</strong>
+          <div class="client-list" data-card-history></div>
+        </section>
+      </div>
+    </section>
+  </main>
+  <nav class="bottom-nav bottom-nav--five" aria-label="Cliente">
+    <a href="index.html"><i data-lucide="wallet"></i>Wallet</a>
+    <a href="promociones.html"><i data-lucide="megaphone"></i>Promos</a>
+    <a href="qr.html"><i data-lucide="qr-code"></i>Mi QR</a>
+    <a href="historial.html"><i data-lucide="clock-3"></i>Historial</a>
+    <a href="perfil.html"><i data-lucide="user"></i>Perfil</a>
+  </nav>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/client.js"></script>
+  <script>ClientApp.initCard();</script>
+</body>
+</html>

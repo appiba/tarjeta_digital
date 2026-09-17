@@ -1,5 +1,10 @@
 (function() {
   var currentBusinessCode = '';
+  var currentBusiness = null;
+  var currentProgram = null;
+  var currentReward = null;
+  var currentPhone = '';
+  var lookupData = null;
 
   async function init() {
     AppUtils.mountIcons();
@@ -7,11 +12,12 @@
 
     if (!currentBusinessCode) {
       setState('Falta el codigo del negocio en el link.');
+      showStep('error');
       return;
     }
 
+    bindForms();
     await loadBusiness();
-    bindForm();
   }
 
   async function loadBusiness() {
@@ -21,103 +27,228 @@
       });
 
       if (!result.success) {
-        throw new Error(result.message || 'No se pudo cargar el negocio.');
+        throw new Error('No pudimos cargar este establecimiento. Intenta nuevamente.');
       }
 
-      var business = result.data.business || {};
-      var reward = result.data.reward || {};
-      var program = result.data.program || {};
+      currentBusiness = result.data.business || {};
+      currentReward = result.data.reward || {};
+      currentProgram = result.data.program || {};
 
-      setThemeColor('--primary', business.primary_color || '#2563eb');
-      setThemeColor('--secondary', business.secondary_color || '#0f766e');
-      setText('[data-register-initials]', initials(business.business_name || 'Loyalty'));
-      setText('[data-register-business]', business.business_name || 'Loyalty');
-      setText('[data-register-type]', business.business_type || 'Clientes mas cerca');
-      setState('Tarjeta de ' + (business.business_name || 'este negocio') + '. Meta: ' + (program.goal || '10') + '. Premio: ' + (reward.name || 'Premio especial') + '.');
-      showForm(true);
+      paintBusiness(currentBusiness, currentProgram, currentReward);
+      setState('Ingresa tu WhatsApp para buscar tu Wallet.');
+      showStep('phone');
     } catch (error) {
-      setState(error.message);
+      console.error(error);
+      setState('No pudimos cargar este establecimiento. Intenta nuevamente.');
+      showStep('error');
     }
   }
 
-  function bindForm() {
-    var form = AppUtils.qs('[data-register-customer-form]');
+  function bindForms() {
+    var phoneForm = AppUtils.qs('[data-register-phone-form]');
+    var profileForm = AppUtils.qs('[data-register-profile-form]');
 
-    if (!form) {
-      return;
+    if (phoneForm) {
+      phoneForm.addEventListener('submit', handlePhoneSubmit);
     }
 
-    form.addEventListener('submit', async function(event) {
-      event.preventDefault();
+    if (profileForm) {
+      profileForm.addEventListener('submit', handleProfileSubmit);
+    }
 
-      var button = form.querySelector('button[type="submit"]');
-      var formData = new FormData(form);
-
-      AppUtils.setButtonLoading(button, true, 'Creando...');
-
-      try {
-        var result = await AppAPI.apiRequest('registerCustomer', {
-          business_code: currentBusinessCode,
-          full_name: formData.get('full_name'),
-          phone: formData.get('phone'),
-          email: formData.get('email')
-        });
-
-        if (!result.success) {
-          throw new Error(result.message || 'No se pudo crear la tarjeta.');
-        }
-
-        showResult(result.data);
-        AppUtils.toast('Tarjeta creada.', 'success');
-      } catch (error) {
-        AppUtils.toast(error.message, 'error');
-      } finally {
-        AppUtils.setButtonLoading(button, false);
-      }
+    AppUtils.qsa('[data-register-action]').forEach(function(button) {
+      button.addEventListener('click', function() {
+        handleRegisterAction(button.dataset.registerAction, button);
+      });
     });
   }
 
-  function showResult(data) {
-    var box = AppUtils.qs('[data-register-result]');
-    var form = AppUtils.qs('[data-register-customer-form]');
+  async function handlePhoneSubmit(event) {
+    event.preventDefault();
 
-    if (!box) {
+    var form = event.currentTarget;
+    var button = form.querySelector('button[type="submit"]');
+    var formData = new FormData(form);
+    currentPhone = String(formData.get('phone') || '').trim();
+
+    AppUtils.setButtonLoading(button, true, 'Buscando...');
+
+    try {
+      var result = await AppAPI.apiRequest('lookupCustomerPhone', {
+        business_code: currentBusinessCode,
+        phone: currentPhone
+      });
+
+      if (!result.success) {
+        throw new Error('No pudimos revisar tu Wallet. Intenta nuevamente.');
+      }
+
+      lookupData = result.data || {};
+      paintLookupResult(lookupData);
+    } catch (error) {
+      console.error(error);
+      AppUtils.toast('No pudimos revisar tu Wallet. Intenta nuevamente.', 'error');
+    } finally {
+      AppUtils.setButtonLoading(button, false);
+    }
+  }
+
+  async function handleProfileSubmit(event) {
+    event.preventDefault();
+
+    var form = event.currentTarget;
+    var button = form.querySelector('button[type="submit"]');
+    var formData = new FormData(form);
+
+    AppUtils.setButtonLoading(button, true, 'Creando Wallet...');
+
+    try {
+      var result = await AppAPI.apiRequest('registerCustomerWallet', {
+        business_code: currentBusinessCode,
+        full_name: formData.get('full_name'),
+        phone: currentPhone || formData.get('phone'),
+        email: formData.get('email'),
+        birthday: formData.get('birthday')
+      });
+
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudo crear tu Wallet.');
+      }
+
+      completeWalletFlow(result.data, result.data.is_new_customer ? 'Wallet creada' : 'Tarjeta agregada');
+    } catch (error) {
+      AppUtils.toast(error.message, 'error');
+    } finally {
+      AppUtils.setButtonLoading(button, false);
+    }
+  }
+
+  async function handleRegisterAction(action, button) {
+    if (action === 'create-profile') {
+      paintProfileForm();
       return;
     }
 
-    if (form) {
-      form.hidden = true;
+    AppUtils.setButtonLoading(button, true, action === 'open-card' ? 'Abriendo...' : 'Agregando...');
+
+    try {
+      var result = await AppAPI.apiRequest('registerCustomerWallet', {
+        business_code: currentBusinessCode,
+        phone: currentPhone
+      });
+
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudo continuar.');
+      }
+
+      completeWalletFlow(result.data, result.data.is_new_card ? 'Tarjeta agregada' : 'Wallet encontrada');
+    } catch (error) {
+      AppUtils.toast(error.message, 'error');
+    } finally {
+      AppUtils.setButtonLoading(button, false);
+    }
+  }
+
+  function paintLookupResult(data) {
+    if (!data.customer_exists) {
+      paintProfileForm();
+      return;
     }
 
-    box.hidden = false;
-    box.innerHTML = '<h2>Tarjeta creada</h2>' +
-      '<p>Guarda este enlace para ver tu tarjeta digital.</p>' +
-      '<ul class="route-list">' +
-        '<li><span>Negocio</span><strong>' + escapeHtml(data.business.business_name) + '</strong></li>' +
-        '<li><span>Cliente</span><strong>' + escapeHtml(data.customer.full_name) + '</strong></li>' +
-        '<li><span>Tarjeta</span><strong>' + escapeHtml(data.card.card_id) + '</strong></li>' +
-      '</ul>' +
+    var businessName = currentBusiness.business_name || 'este negocio';
+    var customerName = data.customer && data.customer.full_name ? data.customer.full_name : 'Cliente';
+    var title = data.has_card ? 'Ya tienes una tarjeta activa de ' + businessName + '.' : 'Agregar ' + businessName + ' a tu Wallet';
+    var buttonText = data.has_card ? 'Abrir mi tarjeta' : 'Agregar tarjeta';
+    var action = data.has_card ? 'open-card' : 'add-card';
+    var box = AppUtils.qs('[data-register-result]');
+
+    showStep('result');
+    box.innerHTML = '<h2>Hola, ' + escapeHtml(customerName) + '</h2>' +
+      '<p>Ya encontramos tu Wallet.</p>' +
+      '<div class="wallet-add-card">' +
+        '<div class="wallet-add-card__logo">' + escapeHtml(initials(businessName)) + '</div>' +
+        '<div><strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(programSummary(currentProgram, currentReward)) + '</span></div>' +
+      '</div>' +
       '<div class="approval-actions">' +
-        '<a class="button button--primary" href="' + escapeAttr(data.card_url) + '">Ver mi tarjeta</a>' +
-        '<button class="button button--ghost" type="button" data-copy-card-link>Copiar link</button>' +
+        '<button class="button button--primary" type="button" data-register-action="' + escapeAttr(action) + '">' + escapeHtml(buttonText) + '</button>' +
+        '<button class="button button--ghost" type="button" data-change-phone>Cambiar telefono</button>' +
       '</div>';
 
-    var copyButton = AppUtils.qs('[data-copy-card-link]', box);
-    if (copyButton) {
-      copyButton.addEventListener('click', function() {
-        copyToClipboard(data.card_url);
-      });
+    bindDynamicResultButtons(box);
+  }
+
+  function paintProfileForm() {
+    var phoneInput = AppUtils.qs('[data-profile-phone]');
+
+    if (phoneInput) {
+      phoneInput.value = currentPhone;
     }
 
+    showStep('profile');
+    setState('Crea tu Wallet una sola vez. Luego podras agregar mas negocios con el mismo WhatsApp.');
+  }
+
+  function completeWalletFlow(data, title) {
+    var session = data.customer_session;
+
+    if (session) {
+      AppAPI.setCustomerSession(session);
+    }
+
+    var box = AppUtils.qs('[data-register-result]');
+    var business = data.business || currentBusiness || {};
+    var customer = data.customer || {};
+    var card = data.card || {};
+    var walletUrl = data.wallet_url || '../client/';
+    var cardUrl = data.card_url || walletUrl;
+
+    showStep('result');
+    box.innerHTML = '<h2>' + escapeHtml(title || 'Wallet lista') + '</h2>' +
+      '<p>Tu cliente ya queda identificado por su Wallet. Puedes abrir la tarjeta de este negocio o ver todas tus tarjetas.</p>' +
+      '<ul class="route-list">' +
+        '<li><span>Cliente</span><strong>' + escapeHtml(customer.full_name || 'Cliente') + '</strong></li>' +
+        '<li><span>Wallet</span><strong>' + escapeHtml(customer.wallet_id || (session && session.wallet_id) || '') + '</strong></li>' +
+        '<li><span>Negocio</span><strong>' + escapeHtml(business.business_name || '') + '</strong></li>' +
+        '<li><span>Tarjeta</span><strong>' + escapeHtml(card.card_id || '') + '</strong></li>' +
+      '</ul>' +
+      '<div class="approval-actions">' +
+        '<a class="button button--primary" href="' + escapeAttr(cardUrl) + '">Abrir mi tarjeta</a>' +
+        '<a class="button button--ghost" href="' + escapeAttr(walletUrl) + '">Ir a Mi Wallet</a>' +
+      '</div>';
+
+    AppUtils.toast(title || 'Wallet lista.', 'success');
     AppUtils.mountIcons();
   }
 
-  function showForm(visible) {
-    var form = AppUtils.qs('[data-register-customer-form]');
+  function bindDynamicResultButtons(root) {
+    AppUtils.qsa('[data-register-action]', root).forEach(function(button) {
+      button.addEventListener('click', function() {
+        handleRegisterAction(button.dataset.registerAction, button);
+      });
+    });
 
-    if (form) {
-      form.hidden = !visible;
+    var changePhone = AppUtils.qs('[data-change-phone]', root);
+    if (changePhone) {
+      changePhone.addEventListener('click', function() {
+        showStep('phone');
+      });
     }
+  }
+
+  function paintBusiness(business, program, reward) {
+    setThemeColor('--primary', business.primary_color || '#2563eb');
+    setThemeColor('--secondary', business.secondary_color || '#0f766e');
+    setText('[data-register-initials]', initials(business.business_name || 'Loyalty'));
+    setText('[data-register-business]', business.business_name || 'Loyalty');
+    setText('[data-register-type]', business.business_type || 'Clientes mas cerca');
+    setText('[data-program-summary]', programSummary(program, reward));
+    setText('[data-register-state]', 'Tarjeta de ' + (business.business_name || 'este negocio') + '.');
+  }
+
+  function showStep(step) {
+    AppUtils.qsa('[data-register-step]').forEach(function(node) {
+      node.hidden = node.dataset.registerStep !== step;
+    });
   }
 
   function setState(message) {
@@ -135,13 +266,25 @@
     document.body.style.setProperty(name, value);
   }
 
-  async function copyToClipboard(text) {
-    try {
-      await navigator.clipboard.writeText(text);
-      AppUtils.toast('Link copiado.', 'success');
-    } catch (error) {
-      window.prompt('Copia este link', text);
+  function programSummary(program, reward) {
+    var type = labelProgramType(program && program.program_type);
+    var goal = program && program.goal ? program.goal : '10';
+    var rewardName = reward && reward.name ? reward.name : 'Premio especial';
+    return 'Meta: ' + goal + ' ' + type + '. Premio: ' + rewardName + '.';
+  }
+
+  function labelProgramType(type) {
+    var value = String(type || 'STAMPS').toUpperCase();
+
+    if (value === 'POINTS') {
+      return 'puntos';
     }
+
+    if (value === 'VISITS') {
+      return 'visitas';
+    }
+
+    return 'sellos';
   }
 
   function getBusinessCode() {

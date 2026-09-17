@@ -31,13 +31,7 @@
         </div>
         <div class="user-chip"><span data-user-name>Usuario</span></div>
       </section>
-      <section class="empty-state">
-        <div>
-          <i data-lucide="users"></i>
-          <h2>Aun no hay clientes</h2>
-          <p>Cuando los negocios registren clientes reales, apareceran en esta vista global.</p>
-        </div>
-      </section>
+      <section class="client-list" data-admin-customers-list></section>
     </main>
   </div>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -45,6 +39,6 @@
   <script src="../assets/js/api.js"></script>
   <script src="../assets/js/auth.js"></script>
   <script src="../assets/js/admin.js"></script>
-  <script>AdminApp.init('Clientes');</script>
+  <script>AdminApp.initCustomers();</script>
 </body>
 </html>

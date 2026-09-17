@@ -1,9 +1,18 @@
-const CACHE_NAME = 'loyalty-platform-api-v11';
+const CACHE_NAME = 'loyalty-platform-wallet-v12';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './login.html',
   './solicitud.html',
+  './register/index.html',
+  './client/index.html',
+  './client/promociones.html',
+  './client/historial.html',
+  './client/perfil.html',
+  './client/card.html',
+  './client/qr.html',
+  './business/clientes.html',
+  './business/scanner.html',
   './assets/css/main.css',
   './assets/css/admin.css',
   './assets/css/business.css',
@@ -14,6 +23,7 @@ const STATIC_ASSETS = [
   './assets/js/admin.js',
   './assets/js/business.js',
   './assets/js/client.js',
+  './assets/js/scanner.js',
   './assets/js/register.js',
   './assets/js/request.js'
 ];

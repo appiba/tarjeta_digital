@@ -3,37 +3,39 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Historial | Loyalty</title>
+  <title>Mi QR | Loyalty</title>
   <link rel="stylesheet" href="../assets/css/main.css">
   <link rel="stylesheet" href="../assets/css/client.css">
 </head>
 <body data-root="../">
-  <main class="client-page">
+  <main class="client-page" data-client-content>
     <section class="mobile-topbar">
       <a href="index.html" aria-label="Volver"><i data-lucide="chevron-left"></i></a>
-      <strong>Historial</strong>
+      <strong>Mi QR</strong>
       <span></span>
     </section>
-    <section class="panel-heading">
-      <div>
-        <span class="badge">Cliente</span>
-        <h1>Historial</h1>
-        <p>Movimientos de todos tus establecimientos.</p>
+    <section class="wallet-qr-card">
+      <span class="badge">Mi QR Loyalty</span>
+      <h1 data-qr-customer>Cliente</h1>
+      <p>Usalo en cualquiera de tus establecimientos.</p>
+      <div class="wallet-qr-frame">
+        <img data-wallet-qr-image alt="QR de Wallet">
       </div>
+      <strong data-wallet-qr-id>WALLET</strong>
+      <small data-wallet-qr-payload></small>
     </section>
-    <section class="client-list" data-history-list></section>
   </main>
   <nav class="bottom-nav bottom-nav--five" aria-label="Cliente">
     <a href="index.html"><i data-lucide="wallet"></i>Wallet</a>
     <a href="promociones.html"><i data-lucide="megaphone"></i>Promos</a>
-    <a href="qr.html"><i data-lucide="qr-code"></i>Mi QR</a>
-    <a class="is-active" href="historial.html"><i data-lucide="clock-3"></i>Historial</a>
+    <a class="is-active" href="qr.html"><i data-lucide="qr-code"></i>Mi QR</a>
+    <a href="historial.html"><i data-lucide="clock-3"></i>Historial</a>
     <a href="perfil.html"><i data-lucide="user"></i>Perfil</a>
   </nav>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../assets/js/utils.js"></script>
   <script src="../assets/js/api.js"></script>
   <script src="../assets/js/client.js"></script>
-  <script>ClientApp.initPage('history');</script>
+  <script>ClientApp.initPage('qr');</script>
 </body>
 </html>

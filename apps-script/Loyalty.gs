@@ -17,3 +17,305 @@ function assertSupportedProgramType_(programType) {
     throw appError_('Tipo de programa no soportado.', 'invalid_program_type');
   }
 }
+
+function publicProgram_(program) {
+  if (!program) {
+    return null;
+  }
+
+  return {
+    program_id: program.program_id,
+    business_id: program.business_id,
+    program_name: program.program_name,
+    program_type: program.program_type,
+    goal: parseInt(program.goal || '10', 10) || 10,
+    points_per_dollar: program.points_per_dollar || '',
+    reward_id: program.reward_id || '',
+    welcome_reward_enabled: isTruthy_(program.welcome_reward_enabled),
+    welcome_reward_type: program.welcome_reward_type || '',
+    welcome_reward_value: program.welcome_reward_value || '',
+    welcome_reward_title: program.welcome_reward_title || '',
+    welcome_reward_description: program.welcome_reward_description || '',
+    status: program.status || ''
+  };
+}
+
+function publicReward_(reward) {
+  if (!reward) {
+    return null;
+  }
+
+  return {
+    reward_id: reward.reward_id,
+    business_id: reward.business_id,
+    program_id: reward.program_id,
+    name: reward.name,
+    description: reward.description || '',
+    points_required: reward.points_required || '',
+    stamps_required: reward.stamps_required || '',
+    visits_required: reward.visits_required || '',
+    status: reward.status || ''
+  };
+}
+
+function getInitialWelcomeRewardStatus_(program) {
+  return program && isTruthy_(program.welcome_reward_enabled) ? 'available' : 'none';
+}
+
+function publicWelcomeReward_(program, card) {
+  if (!program || !isTruthy_(program.welcome_reward_enabled)) {
+    return {
+      enabled: false,
+      status: 'none'
+    };
+  }
+
+  return {
+    enabled: true,
+    status: card && card.welcome_reward_status ? card.welcome_reward_status : 'available',
+    type: program.welcome_reward_type || '',
+    value: program.welcome_reward_value || '',
+    title: getWelcomeRewardTitle_(program),
+    description: program.welcome_reward_description || ''
+  };
+}
+
+function getWelcomeRewardTitle_(program) {
+  if (!program) {
+    return '';
+  }
+
+  return program.welcome_reward_title || program.welcome_reward_description || 'Beneficio de bienvenida';
+}
+
+function isTruthy_(value) {
+  var text = String(value || '').toLowerCase();
+  return value === true || text === 'true' || text === 'yes' || text === 'si' || text === '1' || text === 'active';
+}
+
+function appendTransaction_(values) {
+  ensureWalletSchema_();
+
+  var transaction = {
+    transaction_id: generateId_('TXN'),
+    business_id: values.business_id || '',
+    customer_id: values.customer_id || '',
+    card_id: values.card_id || '',
+    staff_user_id: values.staff_user_id || '',
+    type: values.type || '',
+    amount: values.amount === undefined ? '' : values.amount,
+    points_change: values.points_change === undefined ? '' : values.points_change,
+    stamps_change: values.stamps_change === undefined ? '' : values.stamps_change,
+    visits_change: values.visits_change === undefined ? '' : values.visits_change,
+    previous_balance: values.previous_balance === undefined ? '' : values.previous_balance,
+    new_balance: values.new_balance === undefined ? '' : values.new_balance,
+    notes: values.notes || '',
+    reward_id: values.reward_id || '',
+    created_at: values.created_at || nowIso_()
+  };
+
+  appendObject_('TRANSACTIONS', transaction);
+  return transaction;
+}
+
+function getPromotionsForBusiness_(businessId) {
+  return findRowsByValue_('PROMOTIONS', 'business_id', businessId)
+    .filter(function(promotion) {
+      return isPromotionVisible_(promotion);
+    })
+    .map(function(promotion) {
+      var business = getBusinessById_(promotion.business_id);
+      return {
+        promotion_id: promotion.promotion_id,
+        business: publicBusiness_(business || {}),
+        title: promotion.title || '',
+        description: promotion.description || '',
+        image_url: promotion.image_url || '',
+        start_date: promotion.start_date || '',
+        end_date: promotion.end_date || '',
+        status: promotion.status || ''
+      };
+    });
+}
+
+function getWalletPromotionsForCustomer_(customerId) {
+  var seen = {};
+  var promotions = [];
+
+  getCardsForCustomer_(customerId).forEach(function(card) {
+    if (card.status !== 'active') {
+      return;
+    }
+
+    getPromotionsForBusiness_(card.business_id).forEach(function(promotion) {
+      if (!seen[promotion.promotion_id]) {
+        seen[promotion.promotion_id] = true;
+        promotions.push(promotion);
+      }
+    });
+  });
+
+  return promotions;
+}
+
+function getWalletHistoryForCustomer_(customerId) {
+  return findRowsByValue_('TRANSACTIONS', 'customer_id', customerId)
+    .map(publicTransaction_)
+    .sort(function(left, right) {
+      return String(right.created_at).localeCompare(String(left.created_at));
+    });
+}
+
+function getHistoryForCard_(cardId) {
+  return findRowsByValue_('TRANSACTIONS', 'card_id', cardId)
+    .map(publicTransaction_)
+    .sort(function(left, right) {
+      return String(right.created_at).localeCompare(String(left.created_at));
+    });
+}
+
+function publicTransaction_(transaction) {
+  var business = transaction.business_id ? getBusinessById_(transaction.business_id) : null;
+
+  return {
+    transaction_id: transaction.transaction_id,
+    business: business ? publicBusiness_(business) : null,
+    business_id: transaction.business_id || '',
+    customer_id: transaction.customer_id || '',
+    card_id: transaction.card_id || '',
+    type: transaction.type || '',
+    amount: transaction.amount || '',
+    points_change: parseInt(transaction.points_change || '0', 10) || 0,
+    stamps_change: parseInt(transaction.stamps_change || '0', 10) || 0,
+    visits_change: parseInt(transaction.visits_change || '0', 10) || 0,
+    previous_balance: transaction.previous_balance || '',
+    new_balance: transaction.new_balance || '',
+    notes: transaction.notes || '',
+    reward_id: transaction.reward_id || '',
+    created_at: transaction.created_at || ''
+  };
+}
+
+function applyBusinessCustomerAction_(context, data) {
+  requireFields_(data, ['card_id', 'action']);
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    var card = getCustomerCardById_(data.card_id);
+
+    if (!card || card.business_id !== context.user.business_id) {
+      throw appError_('Tarjeta no encontrada en este negocio.', 'card_not_found');
+    }
+
+    if (card.status !== 'active') {
+      throw appError_('Tarjeta no activa.', 'card_inactive');
+    }
+
+    var program = findRowByValue_('LOYALTY_PROGRAMS', 'program_id', card.program_id);
+    var action = String(data.action || '').toLowerCase();
+    var updates = {
+      updated_at: nowIso_()
+    };
+    var transaction = null;
+
+    if (action === 'add_stamp') {
+      var previousStamps = parseInt(card.stamps || '0', 10) || 0;
+      updates.stamps = previousStamps + 1;
+      transaction = appendTransaction_({
+        business_id: card.business_id,
+        customer_id: card.customer_id,
+        card_id: card.card_id,
+        staff_user_id: context.user.user_id,
+        type: 'add_stamp',
+        stamps_change: 1,
+        previous_balance: previousStamps,
+        new_balance: updates.stamps,
+        notes: data.notes || '+1 sello'
+      });
+    } else if (action === 'add_visit') {
+      var previousVisits = parseInt(card.visits || '0', 10) || 0;
+      updates.visits = previousVisits + 1;
+      transaction = appendTransaction_({
+        business_id: card.business_id,
+        customer_id: card.customer_id,
+        card_id: card.card_id,
+        staff_user_id: context.user.user_id,
+        type: 'add_visit',
+        visits_change: 1,
+        previous_balance: previousVisits,
+        new_balance: updates.visits,
+        notes: data.notes || '+1 visita'
+      });
+    } else if (action === 'add_points') {
+      var amount = parseInt(data.amount || '0', 10) || 0;
+      var previousPoints = parseInt(card.points || '0', 10) || 0;
+      var previousLifetime = parseInt(card.lifetime_points || '0', 10) || 0;
+      updates.points = previousPoints + amount;
+      updates.lifetime_points = previousLifetime + amount;
+      transaction = appendTransaction_({
+        business_id: card.business_id,
+        customer_id: card.customer_id,
+        card_id: card.card_id,
+        staff_user_id: context.user.user_id,
+        type: 'add_points',
+        amount: amount,
+        points_change: amount,
+        previous_balance: previousPoints,
+        new_balance: updates.points,
+        notes: data.notes || '+' + amount + ' puntos'
+      });
+    } else if (action === 'redeem_welcome_reward') {
+      if (card.welcome_reward_status !== 'available') {
+        throw appError_('Beneficio de bienvenida no disponible.', 'welcome_reward_not_available');
+      }
+
+      updates.welcome_reward_status = 'redeemed';
+      transaction = appendTransaction_({
+        business_id: card.business_id,
+        customer_id: card.customer_id,
+        card_id: card.card_id,
+        staff_user_id: context.user.user_id,
+        type: 'welcome_reward_redeemed',
+        notes: getWelcomeRewardTitle_(program),
+        reward_id: program.reward_id || ''
+      });
+
+      appendObject_('REDEMPTIONS', {
+        redemption_id: generateId_('RED'),
+        business_id: card.business_id,
+        customer_id: card.customer_id,
+        card_id: card.card_id,
+        reward_id: program.reward_id || '',
+        staff_user_id: context.user.user_id,
+        status: 'redeemed',
+        created_at: nowIso_(),
+        redeemed_at: nowIso_()
+      });
+    } else {
+      throw appError_('Accion no soportada.', 'invalid_loyalty_action');
+    }
+
+    updateRowByNumber_('CUSTOMER_CARDS', card._rowNumber, updates);
+
+    var updatedCard = getCustomerCardById_(card.card_id);
+    var customer = getCustomerById_(card.customer_id);
+
+    logActivity_(context.user.user_id, card.business_id, action, 'customer_card', card.card_id, {
+      customer_id: card.customer_id,
+      transaction_id: transaction ? transaction.transaction_id : ''
+    });
+
+    return {
+      customer: publicCustomer_(customer),
+      card: publicCustomerCard_(updatedCard, program),
+      program: publicProgram_(program),
+      welcome_reward: publicWelcomeReward_(program, updatedCard),
+      transaction: transaction ? publicTransaction_(transaction) : null,
+      history: getHistoryForCard_(card.card_id)
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}

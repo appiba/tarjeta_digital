@@ -18,25 +18,21 @@
       <div>
         <span class="badge">Cliente</span>
         <h1>Promociones</h1>
-        <p>Promociones activas para esta tarjeta.</p>
+        <p>Promociones activas de todos tus negocios.</p>
       </div>
     </section>
-    <section class="empty-state">
-      <div>
-        <i data-lucide="megaphone"></i>
-        <h2>Todavia no tienes promociones</h2>
-        <p>Las promociones activas del negocio apareceran aqui.</p>
-      </div>
-    </section>
+    <section class="client-list" data-promotions-list></section>
   </main>
-  <nav class="bottom-nav" aria-label="Cliente">
-    <a href="index.html"><i data-lucide="badge"></i>Tarjeta</a>
+  <nav class="bottom-nav bottom-nav--five" aria-label="Cliente">
+    <a href="index.html"><i data-lucide="wallet"></i>Wallet</a>
     <a class="is-active" href="promociones.html"><i data-lucide="megaphone"></i>Promos</a>
+    <a href="qr.html"><i data-lucide="qr-code"></i>Mi QR</a>
     <a href="historial.html"><i data-lucide="clock-3"></i>Historial</a>
     <a href="perfil.html"><i data-lucide="user"></i>Perfil</a>
   </nav>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/api.js"></script>
   <script src="../assets/js/client.js"></script>
   <script>ClientApp.initPage('promotions');</script>
 </body>

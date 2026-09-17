@@ -36,6 +36,37 @@
     }
   }
 
+  async function initCustomers() {
+    var context = await init('Clientes', ['business_owner', 'staff']);
+
+    if (!context) {
+      return;
+    }
+
+    var container = AppUtils.qs('[data-business-customers-list]');
+
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML = renderLoading();
+
+    try {
+      var result = await AppAPI.apiRequest('listBusinessCustomers', {});
+
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudieron cargar clientes.');
+      }
+
+      var customers = result.data.customers || [];
+
+      paintBusinessCustomers(customers);
+      bindBusinessCustomerSearch(customers);
+    } catch (error) {
+      container.innerHTML = '<article class="panel-card"><h2>Error</h2><p>' + escapeHtml(error.message) + '</p></article>';
+    }
+  }
+
   function paintDashboard(data) {
     var business = data.business || {};
     var program = data.program || {};
@@ -82,6 +113,79 @@
     AppUtils.qsa(selector).forEach(function(node) {
       node.textContent = value === undefined || value === null ? '' : String(value);
     });
+  }
+
+  function paintBusinessCustomers(customers) {
+    var container = AppUtils.qs('[data-business-customers-list]');
+
+    if (!container) {
+      return;
+    }
+
+    if (!customers.length) {
+      container.innerHTML = '<article class="empty-state"><div><i data-lucide="users"></i><h2>Aun no hay clientes</h2><p>La lista se llenara con clientes reales registrados desde el link publico del negocio.</p></div></article>';
+      AppUtils.mountIcons();
+      return;
+    }
+
+    container.innerHTML = customers.map(renderBusinessCustomer).join('');
+    AppUtils.mountIcons();
+  }
+
+  function renderBusinessCustomer(item) {
+    var customer = item.customer || {};
+    var card = item.card || {};
+    var program = item.program || {};
+    var welcome = item.welcome_reward || {};
+
+    return '<article class="request-card" data-business-customer-card="' + escapeAttr(card.card_id || '') + '">' +
+      '<div class="request-card__main">' +
+        '<div><span class="badge">' + escapeHtml(labelProgramType(program.program_type)) + '</span><h2>' + escapeHtml(customer.full_name || 'Cliente') + '</h2><p>' + escapeHtml(customer.phone || '') + '</p></div>' +
+        '<strong>' + escapeHtml(progressText(card, program)) + '</strong>' +
+      '</div>' +
+      '<dl class="request-card__details">' +
+        '<div><dt>Wallet</dt><dd>' + escapeHtml(customer.wallet_id || '') + '</dd></div>' +
+        '<div><dt>Tarjeta</dt><dd>' + escapeHtml(card.card_id || '') + '</dd></div>' +
+        '<div><dt>Bienvenida</dt><dd>' + escapeHtml(welcome.enabled ? welcome.status : 'none') + '</dd></div>' +
+        '<div><dt>Estado</dt><dd>' + escapeHtml(card.status || '') + '</dd></div>' +
+      '</dl>' +
+      '<div class="request-card__actions">' +
+        '<a class="button button--ghost" href="scanner.html?wallet=' + encodeURIComponent(customer.wallet_id || '') + '"><i data-lucide="scan-line"></i>Abrir ficha</a>' +
+      '</div>' +
+      '</article>';
+  }
+
+  function bindBusinessCustomerSearch(customers) {
+    var input = AppUtils.qs('[data-business-customer-search]');
+
+    if (!input) {
+      return;
+    }
+
+    input.addEventListener('input', function() {
+      var query = input.value.trim().toLowerCase();
+      var filtered = customers.filter(function(item) {
+        var customer = item.customer || {};
+        var card = item.card || {};
+        return [customer.full_name, customer.phone, customer.email, customer.wallet_id, card.card_id].join(' ').toLowerCase().indexOf(query) !== -1;
+      });
+
+      paintBusinessCustomers(filtered);
+    });
+  }
+
+  function progressText(card, program) {
+    var type = String(program && program.program_type || 'STAMPS').toUpperCase();
+
+    if (type === 'POINTS') {
+      return (card.points || 0) + ' puntos';
+    }
+
+    if (type === 'VISITS') {
+      return (card.visits || 0) + ' / ' + (card.goal || 10) + ' visitas';
+    }
+
+    return (card.stamps || 0) + ' / ' + (card.goal || 10) + ' sellos';
   }
 
   function setThemeColor(name, value) {
@@ -137,8 +241,26 @@
       .join('') || 'L';
   }
 
+  function renderLoading() {
+    return '<div class="loader-list"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>';
+  }
+
+  function escapeHtml(value) {
+    return String(value === undefined || value === null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value).replace(/`/g, '&#096;');
+  }
+
   window.BusinessApp = {
     init: init,
+    initCustomers: initCustomers,
     initDashboard: initDashboard
   };
 })();

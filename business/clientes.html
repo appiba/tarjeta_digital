@@ -34,7 +34,7 @@
       <section class="panel-card">
         <div class="field">
           <label for="customer_search">Buscar clientes</label>
-          <input id="customer_search" type="search" placeholder="Nombre, WhatsApp, correo o tarjeta" disabled>
+          <input id="customer_search" type="search" placeholder="Nombre, WhatsApp, correo o tarjeta" data-business-customer-search>
         </div>
         <div class="panel-actions">
           <span class="badge">Activos</span>
@@ -42,13 +42,7 @@
           <span class="badge">Nuevos</span>
         </div>
       </section>
-      <section class="empty-state">
-        <div>
-          <i data-lucide="users"></i>
-          <h2>Aun no hay clientes</h2>
-          <p>La lista se llenara con clientes reales registrados desde el link publico del negocio.</p>
-        </div>
-      </section>
+      <section class="client-list" data-business-customers-list></section>
     </main>
   </div>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -56,6 +50,6 @@
   <script src="../assets/js/api.js"></script>
   <script src="../assets/js/auth.js"></script>
   <script src="../assets/js/business.js"></script>
-  <script>BusinessApp.init('Clientes', ['business_owner']);</script>
+  <script>BusinessApp.initCustomers();</script>
 </body>
 </html>

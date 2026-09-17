@@ -299,6 +299,64 @@
     }
   }
 
+  async function initCustomers() {
+    var context = await init('Clientes');
+
+    if (!context) {
+      return;
+    }
+
+    var container = AppUtils.qs('[data-admin-customers-list]');
+
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML = renderSkeletonList(3);
+
+    try {
+      var result = await AppAPI.apiRequest('listAdminCustomers', {});
+
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudieron cargar clientes.');
+      }
+
+      var customers = result.data.customers || [];
+
+      if (customers.length === 0) {
+        container.innerHTML = renderEmptyState('users', 'Aun no hay clientes', 'Cuando los negocios registren clientes reales, apareceran en esta vista global.');
+        AppUtils.mountIcons();
+        return;
+      }
+
+      container.innerHTML = customers.map(renderAdminCustomer).join('');
+      AppUtils.mountIcons();
+    } catch (error) {
+      container.innerHTML = '<article class="panel-card"><h2>Error</h2><p>' + escapeHtml(error.message) + '</p></article>';
+    }
+  }
+
+  function renderAdminCustomer(item) {
+    var customer = item.customer || {};
+    var businesses = item.businesses || [];
+    var names = businesses.map(function(business) {
+      return business.business_name;
+    }).filter(Boolean).join(', ');
+
+    return '<article class="request-card">' +
+      '<div class="request-card__main">' +
+        '<div><span class="badge">Wallet</span><h2>' + escapeHtml(customer.full_name || 'Cliente') + '</h2><p>' + escapeHtml(customer.phone || '') + '</p></div>' +
+        '<strong>' + escapeHtml((item.card_count || 0) + ' tarjetas') + '</strong>' +
+      '</div>' +
+      '<dl class="request-card__details">' +
+        '<div><dt>Wallet</dt><dd>' + escapeHtml(customer.wallet_id || '') + '</dd></div>' +
+        '<div><dt>Correo</dt><dd>' + escapeHtml(customer.email || 'Sin correo') + '</dd></div>' +
+        '<div><dt>Negocios</dt><dd>' + escapeHtml(names || 'Sin negocios') + '</dd></div>' +
+        '<div><dt>Estado</dt><dd>' + escapeHtml(customer.status || '') + '</dd></div>' +
+      '</dl>' +
+      '</article>';
+  }
+
   function renderBusinessCard(business) {
     return '<article class="request-card">' +
       '<div class="request-card__main">' +
@@ -417,6 +475,7 @@
   window.AdminApp = {
     init: init,
     initBusinesses: initBusinesses,
+    initCustomers: initCustomers,
     initDashboard: initDashboard,
     initRequests: initRequests
   };

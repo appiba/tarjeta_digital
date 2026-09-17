@@ -39,12 +39,16 @@
             <div class="scan-frame" aria-label="Area de escaneo QR">
               <i data-lucide="scan-line"></i>
             </div>
-            <div class="panel-actions">
-              <button class="button button--ghost" type="button">Ingresar codigo manual</button>
-            </div>
+            <form class="form scanner-form" data-wallet-scan-form>
+              <div class="field">
+                <label for="wallet_code">Wallet del cliente</label>
+                <input id="wallet_code" name="wallet" type="text" placeholder="WALLET-XXXX o URL del QR">
+              </div>
+              <button class="button button--primary" type="submit">Buscar Wallet</button>
+            </form>
           </div>
         </article>
-        <article class="panel-card">
+        <article class="panel-card" data-scanner-result>
           <h2>Ficha del cliente</h2>
           <p>Cuando se escanee una tarjeta, aqui apareceran las acciones disponibles.</p>
           <div class="settings-list">
@@ -69,8 +73,11 @@
   <script src="../assets/js/business.js"></script>
   <script src="../assets/js/scanner.js"></script>
   <script>
-    BusinessApp.init('Escanear', ['business_owner', 'staff']);
-    ScannerApp.initScannerPlaceholder();
+    BusinessApp.init('Escanear', ['business_owner', 'staff']).then(function(context) {
+      if (context) {
+        ScannerApp.initScanner(context);
+      }
+    });
   </script>
 </body>
 </html>

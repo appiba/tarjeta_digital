@@ -21,28 +21,44 @@
         <div class="client-hero-register__body">
           <div class="benefit-card">
             <p data-register-state>Validando negocio...</p>
+            <p class="muted" data-program-summary></p>
             <div class="benefit-row"><i data-lucide="badge-check"></i><span>Acumula sellos</span></div>
             <div class="benefit-row"><i data-lucide="gift"></i><span>Obten premios</span></div>
             <div class="benefit-row"><i data-lucide="megaphone"></i><span>Promociones exclusivas</span></div>
-            <form class="form" data-register-customer-form hidden>
+            <form class="form" data-register-phone-form data-register-step="phone" hidden>
+              <div class="field">
+                <label for="phone">Numero de WhatsApp</label>
+                <input id="phone" name="phone" type="tel" autocomplete="tel" required>
+              </div>
+              <button class="button button--primary" type="submit">Continuar</button>
+            </form>
+            <form class="form" data-register-profile-form data-register-step="profile" hidden>
               <div class="field">
                 <label for="full_name">Nombre completo</label>
                 <input id="full_name" name="full_name" type="text" autocomplete="name" required>
               </div>
               <div class="field">
                 <label for="phone">WhatsApp</label>
-                <input id="phone" name="phone" type="tel" autocomplete="tel" required>
+                <input id="profile_phone" name="phone" type="tel" autocomplete="tel" data-profile-phone readonly>
               </div>
               <div class="field">
-                <label for="email">Correo</label>
+                <label for="email">Correo opcional</label>
                 <input id="email" name="email" type="email" autocomplete="email">
               </div>
-              <button class="button button--primary" type="submit">Crear mi tarjeta</button>
+              <div class="field">
+                <label for="birthday">Cumpleanos opcional</label>
+                <input id="birthday" name="birthday" type="date">
+              </div>
+              <button class="button button--primary" type="submit">Crear mi Wallet</button>
             </form>
           </div>
         </div>
       </div>
-      <section class="panel-card" data-register-result hidden></section>
+      <section class="panel-card" data-register-result data-register-step="result" hidden></section>
+      <section class="panel-card" data-register-step="error" hidden>
+        <h2>No pudimos cargar este establecimiento</h2>
+        <p>Intenta nuevamente desde el link que te compartio el negocio.</p>
+      </section>
     </section>
   </main>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>

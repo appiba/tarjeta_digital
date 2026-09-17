@@ -18,6 +18,27 @@ function getBusinessByCode_(businessCode) {
   return findRowByValue_('BUSINESSES', 'business_code', String(businessCode || '').trim().toUpperCase());
 }
 
+function getPublicBusiness_(data) {
+  requireFields_(data, ['business_code']);
+
+  var business = getBusinessByCode_(data.business_code);
+
+  if (!business || business.status !== 'active') {
+    throw appError_('Negocio no encontrado o inactivo.', 'business_not_found');
+  }
+
+  var program = getActiveProgramForBusiness_(business.business_id);
+  var reward = program && program.reward_id ? findRowByValue_('REWARDS', 'reward_id', program.reward_id) : null;
+
+  return {
+    business: publicBusiness_(business),
+    program: publicProgram_(program),
+    reward: publicReward_(reward),
+    welcome_reward: publicWelcomeReward_(program, null),
+    customer_register_url: buildCustomerRegisterUrl_(business.business_code)
+  };
+}
+
 function registerBusinessRequest_(data) {
   requireFields_(data, ['business_name', 'owner_name', 'email', 'owner_password', 'whatsapp', 'business_type']);
   ensureSheet_(getSpreadsheet_(), 'REQUESTS', SHEET_SCHEMAS.REQUESTS);
@@ -189,6 +210,11 @@ function approveBusinessRequest_(context, data) {
       goal: goal,
       points_per_dollar: loyaltyType === 'POINTS' ? '1' : '',
       reward_id: rewardId,
+      welcome_reward_enabled: '',
+      welcome_reward_type: '',
+      welcome_reward_value: '',
+      welcome_reward_title: '',
+      welcome_reward_description: '',
       status: 'active',
       created_at: timestamp,
       updated_at: timestamp
@@ -452,7 +478,7 @@ function buildClientCardUrl_(cardId) {
     return '';
   }
 
-  return appUrl.replace(/\/?$/, '/') + 'client/?card=' + encodeURIComponent(cardId);
+  return appUrl.replace(/\/?$/, '/') + 'client/card.html?card=' + encodeURIComponent(cardId);
 }
 
 function buildApprovalMessage_(request, business, temporaryPassword, hasOwnerPassword, businessLoginUrl, customerRegisterUrl) {
@@ -469,13 +495,13 @@ function buildApprovalMessage_(request, business, temporaryPassword, hasOwnerPas
     'Codigo del negocio: ' + business.business_code,
     '',
     'Link para clientes: ' + (customerRegisterUrl || 'pendiente de configurar'),
-    'Comparte ese link con tus clientes para que creen su tarjeta digital.'
+    'Comparte ese link para que tus clientes creen su Wallet o agreguen tu tarjeta a su Wallet existente.'
   ].join('\n');
 }
 
 function buildCustomerShareMessage_(business, customerRegisterUrl) {
   return [
-    'Hola, ya puedes crear tu tarjeta digital de lealtad de ' + business.business_name + '.',
+    'Hola, ya puedes agregar ' + business.business_name + ' a tu Wallet Loyalty.',
     customerRegisterUrl || ''
   ].join('\n').trim();
 }
@@ -507,7 +533,7 @@ function sendApprovalEmail_(request, business, temporaryPassword, hasOwnerPasswo
         '<strong>' + passwordHtml + '<br>' +
         '<strong>Codigo del negocio:</strong> ' + emailHtml_(business.business_code) + '</p>' +
         '<p><strong>Link para clientes:</strong><br><a href="' + emailHtml_(customerRegisterUrl) + '">' + emailHtml_(customerRegisterUrl) + '</a></p>' +
-        '<p>Comparte ese link con tus clientes para que creen su tarjeta digital.</p>'
+        '<p>Comparte ese link para que tus clientes creen su Wallet o agreguen tu tarjeta a su Wallet existente.</p>'
     });
 
     return {
