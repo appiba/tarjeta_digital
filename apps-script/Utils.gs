@@ -17,6 +17,12 @@ var SHEET_SCHEMAS = Object.freeze({
     'business_type',
     'status',
     'plan',
+    'billing_cycle',
+    'billing_status',
+    'next_payment_date',
+    'suspended_reason',
+    'suspended_at',
+    'reactivated_at',
     'created_at',
     'approved_at'
   ],

@@ -170,6 +170,12 @@ function approveBusinessRequest_(context, data) {
       business_type: request.business_type || '',
       status: 'active',
       plan: 'starter',
+      billing_cycle: 'monthly',
+      billing_status: 'current',
+      next_payment_date: nextPaymentDateForCycle_('monthly'),
+      suspended_reason: '',
+      suspended_at: '',
+      reactivated_at: '',
       created_at: timestamp,
       approved_at: timestamp
     });
@@ -315,6 +321,111 @@ function listBusinesses_(context, data) {
 
   return {
     businesses: rows.map(publicBusiness_)
+  };
+}
+
+function setBusinessBilling_(context, data) {
+  requireFields_(data, ['business_id']);
+
+  var business = getBusinessById_(data.business_id);
+
+  if (!business) {
+    throw appError_('Negocio no encontrado.', 'business_not_found');
+  }
+
+  var cycle = normalizeBillingCycle_(data.billing_cycle || business.billing_cycle || 'monthly');
+  var billingStatus = normalizeBillingStatus_(data.billing_status || business.billing_status || 'current');
+  var nextPaymentDate = sanitizeDateText_(data.next_payment_date || business.next_payment_date || nextPaymentDateForCycle_(cycle));
+
+  updateRowByNumber_('BUSINESSES', business._rowNumber, {
+    billing_cycle: cycle,
+    billing_status: billingStatus,
+    next_payment_date: nextPaymentDate
+  });
+
+  var updatedBusiness = getBusinessById_(business.business_id);
+
+  logActivity_(context.user.user_id, business.business_id, 'business_billing_updated', 'business', business.business_id, {
+    billing_cycle: cycle,
+    billing_status: billingStatus,
+    next_payment_date: nextPaymentDate
+  });
+
+  return {
+    business: publicBusiness_(updatedBusiness),
+    whatsapp_message: buildPaymentReminderMessage_(updatedBusiness),
+    whatsapp_url: buildWhatsAppUrl_(updatedBusiness.whatsapp || updatedBusiness.phone, buildPaymentReminderMessage_(updatedBusiness))
+  };
+}
+
+function suspendBusinessForPayment_(context, data) {
+  requireFields_(data, ['business_id']);
+
+  var business = getBusinessById_(data.business_id);
+
+  if (!business) {
+    throw appError_('Negocio no encontrado.', 'business_not_found');
+  }
+
+  var reason = sanitizeText_(data.reason || 'Pago pendiente de mensualidad o anualidad.', 300);
+  var timestamp = nowIso_();
+
+  updateRowByNumber_('BUSINESSES', business._rowNumber, {
+    status: 'suspended',
+    billing_status: 'overdue',
+    suspended_reason: reason,
+    suspended_at: timestamp
+  });
+  updateBusinessUsersStatus_(business.business_id, 'suspended');
+
+  var updatedBusiness = getBusinessById_(business.business_id);
+  var message = buildPaymentSuspensionMessage_(updatedBusiness);
+
+  logActivity_(context.user.user_id, business.business_id, 'business_suspended_payment', 'business', business.business_id, {
+    reason: reason
+  });
+
+  return {
+    business: publicBusiness_(updatedBusiness),
+    whatsapp_message: message,
+    whatsapp_url: buildWhatsAppUrl_(updatedBusiness.whatsapp || updatedBusiness.phone, message)
+  };
+}
+
+function reactivateBusiness_(context, data) {
+  requireFields_(data, ['business_id']);
+
+  var business = getBusinessById_(data.business_id);
+
+  if (!business) {
+    throw appError_('Negocio no encontrado.', 'business_not_found');
+  }
+
+  var cycle = normalizeBillingCycle_(data.billing_cycle || business.billing_cycle || 'monthly');
+  var nextPaymentDate = sanitizeDateText_(data.next_payment_date || nextPaymentDateForCycle_(cycle));
+  var timestamp = nowIso_();
+
+  updateRowByNumber_('BUSINESSES', business._rowNumber, {
+    status: 'active',
+    billing_cycle: cycle,
+    billing_status: 'current',
+    next_payment_date: nextPaymentDate,
+    suspended_reason: '',
+    reactivated_at: timestamp
+  });
+  updateBusinessUsersStatus_(business.business_id, 'active');
+
+  var updatedBusiness = getBusinessById_(business.business_id);
+  var message = buildPaymentReactivationMessage_(updatedBusiness);
+
+  logActivity_(context.user.user_id, business.business_id, 'business_reactivated_payment', 'business', business.business_id, {
+    next_payment_date: nextPaymentDate
+  });
+
+  return {
+    business: publicBusiness_(updatedBusiness),
+    whatsapp_message: message,
+    whatsapp_url: buildWhatsAppUrl_(updatedBusiness.whatsapp || updatedBusiness.phone, message)
   };
 }
 
@@ -506,6 +617,49 @@ function buildCustomerShareMessage_(business, customerRegisterUrl) {
   ].join('\n').trim();
 }
 
+function buildPaymentReminderMessage_(business) {
+  var businessName = business.business_name || 'tu negocio';
+  var cycleLabel = getBillingCycleLabel_(business.billing_cycle);
+  var dueDate = business.next_payment_date || 'la fecha pendiente';
+
+  return [
+    'Hola, ' + businessName + '.',
+    '',
+    'Te recordamos que esta pendiente cancelar el pago ' + cycleLabel + ' de tu plataforma Loyalty.',
+    'Fecha de pago: ' + dueDate + '.',
+    '',
+    'Para evitar la suspension del panel y de las tarjetas de clientes, por favor confirma el pago con el administrador.',
+    'Gracias.'
+  ].join('\n');
+}
+
+function buildPaymentSuspensionMessage_(business) {
+  var businessName = business.business_name || 'tu negocio';
+  var cycleLabel = getBillingCycleLabel_(business.billing_cycle);
+
+  return [
+    'Hola, ' + businessName + '.',
+    '',
+    'Tu cuenta de Loyalty fue suspendida temporalmente por pago ' + cycleLabel + ' pendiente.',
+    'Motivo: ' + (business.suspended_reason || 'Pago pendiente') + '.',
+    '',
+    'Cuando canceles el valor pendiente, el administrador reactivara tu panel y tus tarjetas.'
+  ].join('\n');
+}
+
+function buildPaymentReactivationMessage_(business) {
+  var businessName = business.business_name || 'tu negocio';
+
+  return [
+    'Hola, ' + businessName + '.',
+    '',
+    'Tu cuenta de Loyalty ya fue reactivada.',
+    'Proximo pago: ' + (business.next_payment_date || 'por definir') + '.',
+    '',
+    'Ya puedes entrar nuevamente al panel del negocio.'
+  ].join('\n');
+}
+
 function buildWhatsAppUrl_(phone, message) {
   var digits = normalizePhone_(phone).replace(/[^\d]/g, '');
 
@@ -514,6 +668,62 @@ function buildWhatsAppUrl_(phone, message) {
   }
 
   return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(message);
+}
+
+function normalizeBillingCycle_(cycle) {
+  var value = String(cycle || '').trim().toLowerCase();
+
+  if (value === 'yearly' || value === 'annual' || value === 'anual' || value === 'ano' || value === 'año') {
+    return 'yearly';
+  }
+
+  return 'monthly';
+}
+
+function normalizeBillingStatus_(status) {
+  var value = String(status || '').trim().toLowerCase();
+
+  if (value === 'overdue' || value === 'vencido' || value === 'pendiente') {
+    return 'overdue';
+  }
+
+  if (value === 'cancelled' || value === 'canceled' || value === 'cancelado') {
+    return 'cancelled';
+  }
+
+  return 'current';
+}
+
+function getBillingCycleLabel_(cycle) {
+  return normalizeBillingCycle_(cycle) === 'yearly' ? 'anual' : 'mensual';
+}
+
+function nextPaymentDateForCycle_(cycle) {
+  var days = normalizeBillingCycle_(cycle) === 'yearly' ? 365 : 30;
+  var date = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+  return date.toISOString().slice(0, 10);
+}
+
+function sanitizeDateText_(value) {
+  var text = String(value || '').trim();
+
+  if (!text) {
+    return '';
+  }
+
+  var match = text.match(/^\d{4}-\d{2}-\d{2}$/);
+  return match ? text : text.substring(0, 40);
+}
+
+function updateBusinessUsersStatus_(businessId, status) {
+  var users = findRowsByValue_('USERS', 'business_id', businessId);
+
+  users.forEach(function(user) {
+    updateRowByNumber_('USERS', user._rowNumber, {
+      status: status
+    });
+  });
 }
 
 function sendApprovalEmail_(request, business, temporaryPassword, hasOwnerPassword, businessLoginUrl, customerRegisterUrl, message) {
@@ -601,6 +811,14 @@ function publicBusiness_(business) {
     business_type: business.business_type || '',
     status: business.status,
     plan: business.plan || '',
+    billing_cycle: business.billing_cycle || 'monthly',
+    billing_status: business.billing_status || 'current',
+    next_payment_date: business.next_payment_date || '',
+    suspended_reason: business.suspended_reason || '',
+    suspended_at: business.suspended_at || '',
+    reactivated_at: business.reactivated_at || '',
+    payment_whatsapp_message: buildPaymentReminderMessage_(business),
+    payment_whatsapp_url: buildWhatsAppUrl_(business.whatsapp || business.phone, buildPaymentReminderMessage_(business)),
     created_at: business.created_at || '',
     approved_at: business.approved_at || ''
   };

@@ -358,6 +358,14 @@
   }
 
   function renderBusinessCard(business) {
+    var isSuspended = business.status === 'suspended';
+    var whatsappButton = business.payment_whatsapp_url ?
+      '<a class="button button--primary" href="' + escapeAttr(business.payment_whatsapp_url) + '" target="_blank" rel="noopener"><i data-lucide="message-circle"></i>WSS cobro</a>' :
+      '<button class="button button--ghost" type="button" disabled><i data-lucide="message-circle"></i>Sin WhatsApp</button>';
+    var paymentAction = isSuspended ?
+      '<button class="button button--success" type="button" data-reactivate-business="' + escapeAttr(business.business_id) + '"><i data-lucide="badge-check"></i>Reactivar</button>' :
+      '<button class="button button--danger" type="button" data-suspend-business-payment="' + escapeAttr(business.business_id) + '"><i data-lucide="ban"></i>Suspender por pago</button>';
+
     return '<article class="request-card">' +
       '<div class="request-card__main">' +
         '<div><span class="badge" data-status="' + escapeAttr(business.status) + '">' + escapeHtml(statusLabel(business.status)) + '</span><h2>' + escapeHtml(business.business_name) + '</h2><p>' + escapeHtml(business.business_type || '') + '</p></div>' +
@@ -368,19 +376,154 @@
         '<div><dt>WhatsApp</dt><dd>' + escapeHtml(business.whatsapp) + '</dd></div>' +
         '<div><dt>Ciudad</dt><dd>' + escapeHtml(business.city) + '</dd></div>' +
         '<div><dt>Plan</dt><dd>' + escapeHtml(business.plan) + '</dd></div>' +
+        '<div><dt>Cobro</dt><dd>' + escapeHtml(billingCycleLabel(business.billing_cycle)) + '</dd></div>' +
+        '<div><dt>Estado pago</dt><dd>' + escapeHtml(billingStatusLabel(business.billing_status)) + '</dd></div>' +
+        '<div><dt>Proximo pago</dt><dd>' + escapeHtml(formatPaymentDate(business.next_payment_date)) + '</dd></div>' +
+        (business.suspended_reason ? '<div><dt>Motivo suspension</dt><dd>' + escapeHtml(business.suspended_reason) + '</dd></div>' : '') +
       '</dl>' +
       '<div class="request-card__actions">' +
+        whatsappButton +
+        '<button class="button button--ghost" type="button" data-configure-billing="' + escapeAttr(business.business_id) + '" data-billing-cycle="' + escapeAttr(business.billing_cycle || 'monthly') + '" data-next-payment="' + escapeAttr(business.next_payment_date || '') + '"><i data-lucide="calendar-clock"></i>Configurar pago</button>' +
+        paymentAction +
         '<button class="button button--ghost" type="button" data-reset-owner-password="' + escapeAttr(business.business_id) + '"><i data-lucide="key-round"></i>Restablecer clave</button>' +
       '</div>' +
       '</article>';
   }
 
   function bindBusinessActions(container) {
+    AppUtils.qsa('[data-configure-billing]', container).forEach(function(button) {
+      button.addEventListener('click', function() {
+        configureBusinessBilling(button.dataset.configureBilling, button);
+      });
+    });
+
+    AppUtils.qsa('[data-suspend-business-payment]', container).forEach(function(button) {
+      button.addEventListener('click', function() {
+        suspendBusinessPayment(button.dataset.suspendBusinessPayment, button);
+      });
+    });
+
+    AppUtils.qsa('[data-reactivate-business]', container).forEach(function(button) {
+      button.addEventListener('click', function() {
+        reactivateBusiness(button.dataset.reactivateBusiness, button);
+      });
+    });
+
     AppUtils.qsa('[data-reset-owner-password]', container).forEach(function(button) {
       button.addEventListener('click', function() {
         resetOwnerPassword(button.dataset.resetOwnerPassword, button);
       });
     });
+  }
+
+  async function configureBusinessBilling(businessId, button) {
+    var rawCycle = window.prompt('Tipo de cobro: mensual o anual', button.dataset.billingCycle === 'yearly' ? 'anual' : 'mensual');
+
+    if (!rawCycle) {
+      return;
+    }
+
+    var cycle = normalizeBillingCycle(rawCycle);
+    var nextPayment = window.prompt('Proximo pago en formato YYYY-MM-DD', button.dataset.nextPayment || '');
+
+    if (nextPayment === null) {
+      return;
+    }
+
+    AppUtils.setButtonLoading(button, true, 'Guardando...');
+
+    try {
+      var result = await AppAPI.apiRequest('setBusinessBilling', {
+        business_id: businessId,
+        billing_cycle: cycle,
+        billing_status: 'current',
+        next_payment_date: nextPayment
+      });
+
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudo configurar el pago.');
+      }
+
+      showAdminMessageResult('Cobro configurado', result.data.whatsapp_message, result.data.whatsapp_url);
+      AppUtils.toast('Cobro actualizado.', 'success');
+      await initBusinesses();
+    } catch (error) {
+      AppUtils.toast(error.message, 'error');
+    } finally {
+      AppUtils.setButtonLoading(button, false);
+    }
+  }
+
+  async function suspendBusinessPayment(businessId, button) {
+    var reason = window.prompt('Motivo de suspension', 'Pago pendiente de mensualidad o anualidad.');
+
+    if (!reason) {
+      return;
+    }
+
+    if (!window.confirm('Suspender este negocio y bloquear su acceso al panel?')) {
+      return;
+    }
+
+    AppUtils.setButtonLoading(button, true, 'Suspendiendo...');
+
+    try {
+      var result = await AppAPI.apiRequest('suspendBusinessForPayment', {
+        business_id: businessId,
+        reason: reason
+      });
+
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudo suspender.');
+      }
+
+      showAdminMessageResult('Negocio suspendido', result.data.whatsapp_message, result.data.whatsapp_url);
+      openAdminWhatsApp(result.data.whatsapp_url);
+      AppUtils.toast('Negocio suspendido.', 'success');
+      await initBusinesses();
+    } catch (error) {
+      AppUtils.toast(error.message, 'error');
+    } finally {
+      AppUtils.setButtonLoading(button, false);
+    }
+  }
+
+  async function reactivateBusiness(businessId, button) {
+    var rawCycle = window.prompt('Tipo de cobro para reactivar: mensual o anual', 'mensual');
+
+    if (!rawCycle) {
+      return;
+    }
+
+    var cycle = normalizeBillingCycle(rawCycle);
+    var nextPayment = window.prompt('Proximo pago en formato YYYY-MM-DD', '');
+
+    if (nextPayment === null) {
+      return;
+    }
+
+    AppUtils.setButtonLoading(button, true, 'Reactivando...');
+
+    try {
+      var result = await AppAPI.apiRequest('reactivateBusiness', {
+        business_id: businessId,
+        billing_cycle: cycle,
+        next_payment_date: nextPayment
+      });
+
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudo reactivar.');
+      }
+
+      showAdminMessageResult('Negocio reactivado', result.data.whatsapp_message, result.data.whatsapp_url);
+      openAdminWhatsApp(result.data.whatsapp_url);
+      AppUtils.toast('Negocio reactivado.', 'success');
+      await initBusinesses();
+    } catch (error) {
+      AppUtils.toast(error.message, 'error');
+    } finally {
+      AppUtils.setButtonLoading(button, false);
+    }
   }
 
   async function resetOwnerPassword(businessId, button) {
@@ -407,6 +550,72 @@
     } finally {
       AppUtils.setButtonLoading(button, false);
     }
+  }
+
+  function showAdminMessageResult(title, message, whatsappUrl) {
+    var box = AppUtils.qs('[data-approval-result]');
+
+    if (!box) {
+      return;
+    }
+
+    box.hidden = false;
+    box.innerHTML = '<h2>' + escapeHtml(title || 'Mensaje listo') + '</h2>' +
+      '<p>Mensaje preparado para el propietario del negocio.</p>' +
+      '<ul class="route-list">' +
+        '<li><span>Mensaje</span><strong>' + escapeHtml(message || '') + '</strong></li>' +
+      '</ul>' +
+      '<div class="approval-actions">' +
+        (whatsappUrl ? '<a class="button button--primary" href="' + escapeAttr(whatsappUrl) + '" target="_blank" rel="noopener"><i data-lucide="message-circle"></i>Abrir WhatsApp</a>' : '') +
+        '<button class="button button--ghost" type="button" data-copy-admin-message><i data-lucide="copy"></i>Copiar mensaje</button>' +
+      '</div>';
+
+    var copyButton = AppUtils.qs('[data-copy-admin-message]', box);
+    if (copyButton) {
+      copyButton.addEventListener('click', function() {
+        copyToClipboard(message || '');
+      });
+    }
+
+    AppUtils.mountIcons();
+  }
+
+  function openAdminWhatsApp(whatsappUrl) {
+    if (whatsappUrl) {
+      window.open(whatsappUrl, '_blank', 'noopener');
+    }
+  }
+
+  function normalizeBillingCycle(value) {
+    var text = String(value || '').trim().toLowerCase();
+
+    if (text === 'anual' || text === 'ano' || text === 'año' || text === 'yearly') {
+      return 'yearly';
+    }
+
+    return 'monthly';
+  }
+
+  function billingCycleLabel(value) {
+    return normalizeBillingCycle(value) === 'yearly' ? 'Anual' : 'Mensual';
+  }
+
+  function billingStatusLabel(value) {
+    var text = String(value || '').trim().toLowerCase();
+
+    if (text === 'overdue') {
+      return 'Vencido';
+    }
+
+    if (text === 'cancelled' || text === 'canceled') {
+      return 'Cancelado';
+    }
+
+    return 'Al dia';
+  }
+
+  function formatPaymentDate(value) {
+    return value ? AppUtils.formatDate(value) : 'Por definir';
   }
 
   function setText(selector, value) {

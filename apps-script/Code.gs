@@ -98,6 +98,12 @@ function routeAction_(request) {
       return rejectBusinessRequest_(requireSession_(request.token, ['super_admin']), request.data);
     case 'listBusinesses':
       return listBusinesses_(requireSession_(request.token, ['super_admin']), request.data);
+    case 'setBusinessBilling':
+      return setBusinessBilling_(requireSession_(request.token, ['super_admin']), request.data);
+    case 'suspendBusinessForPayment':
+      return suspendBusinessForPayment_(requireSession_(request.token, ['super_admin']), request.data);
+    case 'reactivateBusiness':
+      return reactivateBusiness_(requireSession_(request.token, ['super_admin']), request.data);
     case 'resetBusinessOwnerPassword':
       return resetBusinessOwnerPassword_(requireSession_(request.token, ['super_admin']), request.data);
     case 'listAdminCustomers':
