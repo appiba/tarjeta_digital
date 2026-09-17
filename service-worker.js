@@ -1,4 +1,4 @@
-const CACHE_NAME = 'loyalty-platform-wallet-v15';
+const CACHE_NAME = 'loyalty-platform-wallet-v16';
 const STATIC_ASSETS = [
   './',
   './index.html',

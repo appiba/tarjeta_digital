@@ -78,6 +78,10 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbx9po1dIm-5cGsPV31rjEz_
       throw new Error('No pudimos cargar la informacion. Intenta nuevamente.');
     }
 
+    if (!result.success && action === 'registerCustomerWallet' && isNotImplementedResult(result, action)) {
+      return apiRequest('registerCustomer', data, options);
+    }
+
     if (!result.success && (result.error === 'unauthorized' || result.error === 'forbidden')) {
       clearSession();
     }
@@ -87,6 +91,14 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbx9po1dIm-5cGsPV31rjEz_
     }
 
     return result;
+  }
+
+  function isNotImplementedResult(result, action) {
+    var message = String(result && result.message || '').toLowerCase();
+    var error = String(result && result.error || '').toLowerCase();
+    var actionName = String(action || '').toLowerCase();
+
+    return error === 'not_implemented' || (message.indexOf('accion no implementada') !== -1 && message.indexOf(actionName) !== -1);
   }
 
   window.AppAPI = {
