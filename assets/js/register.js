@@ -35,7 +35,7 @@
       currentProgram = result.data.program || {};
 
       paintBusiness(currentBusiness, currentProgram, currentReward);
-      setState('Ingresa tu WhatsApp para buscar tu Wallet.');
+      setState('Ingresa tu WhatsApp y abre tu Wallet al instante.');
       showStep('phone');
     } catch (error) {
       console.error(error);
@@ -71,34 +71,13 @@
     var formData = new FormData(form);
     currentPhone = String(formData.get('phone') || '').trim();
 
-    AppUtils.setButtonLoading(button, true, 'Buscando...');
+    AppUtils.setButtonLoading(button, true, 'Abriendo Wallet...');
 
     try {
-      var result = await AppAPI.apiRequest('lookupCustomerPhone', {
-        business_code: currentBusinessCode,
-        phone: currentPhone
-      });
-
-      if (!result.success) {
-        throw new Error('No pudimos revisar tu Wallet. Intenta nuevamente.');
-      }
-
-      lookupData = result.data || {};
-
-      if (!lookupData.customer_exists) {
-        await createWalletFromPhone(button);
-        return;
-      }
-
-      paintLookupResult(lookupData);
+      await createWalletFromPhone(button);
     } catch (error) {
       console.error(error);
-      try {
-        await createWalletFromPhone(button);
-      } catch (registerError) {
-        console.error(registerError);
-        AppUtils.toast(registerError.message || 'No pudimos revisar tu Wallet. Intenta nuevamente.', 'error');
-      }
+      AppUtils.toast(error.message || 'No pudimos abrir tu Wallet. Intenta nuevamente.', 'error');
     } finally {
       AppUtils.setButtonLoading(button, false);
     }
@@ -174,7 +153,7 @@
       throw new Error(result.message || 'No se pudo crear tu Wallet.');
     }
 
-    completeWalletFlow(result.data, result.data.is_new_customer ? 'Primer cupon listo' : 'Wallet encontrada');
+    completeWalletFlow(result.data, result.data.is_new_customer ? 'Wallet activa' : 'Wallet encontrada');
   }
 
   async function requestCustomerRegistration(payload) {
@@ -202,8 +181,8 @@
 
     var businessName = currentBusiness.business_name || 'este negocio';
     var customerName = data.customer && data.customer.full_name ? data.customer.full_name : 'Cliente';
-    var title = data.has_card ? 'Ya tienes una tarjeta activa de ' + businessName + '.' : 'Agregar ' + businessName + ' a tu Wallet';
-    var buttonText = data.has_card ? 'Abrir mi tarjeta' : 'Agregar tarjeta';
+    var title = data.has_card ? 'Tu Wallet ya esta activa en ' + businessName + '.' : 'Agregar ' + businessName + ' a tu Wallet';
+    var buttonText = data.has_card ? 'Abrir mi Wallet' : 'Agregar tarjeta';
     var action = data.has_card ? 'open-card' : 'add-card';
     var box = AppUtils.qs('[data-register-result]');
 
@@ -252,16 +231,16 @@
 
     showStep('result');
     box.innerHTML = '<h2>' + escapeHtml(title || 'Wallet lista') + '</h2>' +
-      '<p>Tu WhatsApp ya queda guardado en la Wallet. Puedes abrir la tarjeta de este negocio o ver todas tus tarjetas.</p>' +
+      '<p>Tu WhatsApp quedo guardado. Abre tu tarjeta para descubrir ofertas, cupones sorpresa y descuentos cuando el negocio los active.</p>' +
       '<ul class="route-list">' +
         '<li><span>Cliente</span><strong>' + escapeHtml(customer.full_name || 'Cliente') + '</strong></li>' +
         '<li><span>Wallet</span><strong>' + escapeHtml(customer.wallet_id || (session && session.wallet_id) || '') + '</strong></li>' +
         '<li><span>Negocio</span><strong>' + escapeHtml(business.business_name || '') + '</strong></li>' +
         '<li><span>Tarjeta</span><strong>' + escapeHtml(card.card_id || '') + '</strong></li>' +
-        (firstCoupon ? '<li><span>Cupon</span><strong>' + escapeHtml(firstCoupon.title || 'Cupon disponible') + '</strong></li>' : '') +
+        (firstCoupon ? '<li><span>Cupon activo</span><strong>' + escapeHtml(firstCoupon.title || 'Cupon sorpresa') + '</strong></li>' : '') +
       '</ul>' +
       '<div class="approval-actions">' +
-        '<a class="button button--primary" href="' + escapeAttr(cardUrl) + '">Abrir mi tarjeta</a>' +
+        '<a class="button button--primary" href="' + escapeAttr(cardUrl) + '">Abrir mi Wallet</a>' +
         '<a class="button button--ghost" href="' + escapeAttr(walletUrl) + '">Ir a Mi Wallet</a>' +
       '</div>';
 
@@ -401,7 +380,7 @@
     setText('[data-register-business]', business.business_name || 'Loyalty');
     setText('[data-register-type]', business.business_type || 'Clientes mas cerca');
     setText('[data-program-summary]', programSummary(program, reward));
-    setText('[data-register-state]', 'Tarjeta de ' + (business.business_name || 'este negocio') + '.');
+    setText('[data-register-state]', 'Tu Wallet para ' + (business.business_name || 'este negocio') + '.');
   }
 
   function showStep(step) {
@@ -428,8 +407,7 @@
   function programSummary(program, reward) {
     var type = labelProgramType(program && program.program_type);
     var goal = program && program.goal ? program.goal : '10';
-    var rewardName = reward && reward.name ? reward.name : 'Premio especial';
-    return 'Meta: ' + goal + ' ' + type + '. Premio: ' + rewardName + '.';
+    return 'Acumula ' + goal + ' ' + type + '. Descubre ofertas, cupones sorpresa y descuentos activos.';
   }
 
   function labelProgramType(type) {

@@ -257,13 +257,12 @@
   function renderWalletCard(item, index) {
     var business = item.business || {};
     var program = item.program || {};
-    var reward = item.reward || {};
     var card = item.card || {};
     var welcome = item.welcome_reward || {};
     var coupon = firstAvailableCoupon(item.available_coupons || item.coupons || []);
     var disabled = business.status === 'suspended' || card.status !== 'active';
     var style = 'style="--card-primary:' + escapeAttr(business.primary_color || '#1f5eff') + ';--card-secondary:' + escapeAttr(business.secondary_color || '#12b981') + ';--stack-index:' + index + '"';
-    var benefit = coupon ? coupon.title : (welcome.enabled && welcome.status === 'available' ? '1 beneficio disponible' : reward.name || 'Premio configurado');
+    var benefit = coupon ? coupon.title : (welcome.enabled && welcome.status === 'available' ? '1 beneficio disponible' : 'Ofertas y cupones sorpresa');
     var label = progressText(card, program);
 
     return '<a class="wallet-card' + (disabled ? ' is-disabled' : '') + '" ' + style + ' href="card.html?card=' + escapeAttr(card.card_id) + '">' +
@@ -284,7 +283,6 @@
     var customer = data.customer || {};
     var card = data.card || {};
     var program = data.program || {};
-    var reward = data.reward || {};
     var welcome = data.welcome_reward || {};
     var coupons = data.coupons || [];
     var left = Math.max(0, (card.goal || 0) - (card.current || 0));
@@ -297,14 +295,14 @@
     setText('[data-customer-name]', customer.full_name || 'Cliente');
     setText('[data-progress-label]', progressText(card, program));
     setText('[data-progress-percent]', (card.progress_percent || 0) + '%');
-    setText('[data-progress-left]', left > 0 ? 'Te faltan ' + left + ' para tu premio.' : 'Ya puedes solicitar tu premio en el local.');
-    setText('[data-reward-name]', reward.name || 'Premio especial');
+    setText('[data-progress-left]', left > 0 ? 'Te faltan ' + left + ' para desbloquear nuevas ofertas.' : 'Ya puedes solicitar tu beneficio en el local.');
+    setText('[data-reward-name]', benefitLabel(data));
     setText('[data-wallet-display]', data.wallet_qr && data.wallet_qr.display ? data.wallet_qr.display : customer.wallet_id || '');
-    setText('[data-welcome-title]', welcome.enabled ? welcome.title : 'Sin beneficio de bienvenida');
-    setText('[data-welcome-status]', welcome.enabled ? statusLabel(welcome.status) : 'No configurado');
+    setText('[data-welcome-title]', welcome.enabled ? welcome.title : 'Cupones sorpresa y descuentos');
+    setText('[data-welcome-status]', welcome.enabled ? statusLabel(welcome.status) : 'Se activan por calendario');
     paintProgressBeans(card.current || 0, card.goal || 10);
     paintMiniList('[data-card-coupons]', coupons, renderCouponItem, 'Aun no tienes cupones.');
-    paintMiniList('[data-card-promotions]', data.promotions || [], renderPromotionItem, 'No hay promociones activas.');
+    paintMiniList('[data-card-promotions]', data.promotions || [], renderPromotionItem, 'Aun no hay ofertas o cupones sorpresa activos.');
     paintMiniList('[data-card-history]', data.history || [], renderHistoryItem, 'Sin movimientos todavia.');
     AppUtils.mountIcons();
   }
@@ -511,6 +509,31 @@
     }
 
     return status || 'No configurado';
+  }
+
+  function benefitLabel(data) {
+    var coupons = data.available_coupons || [];
+    var promotions = data.promotions || [];
+
+    if (coupons.length && coupons[0].title) {
+      return coupons[0].title;
+    }
+
+    if (promotions.some(function(promotion) {
+      var state = promotion.visibility_status || promotion.status || 'active';
+      return state === 'active' && (promotion.type === 'surprise_coupon' || promotion.promotion_type === 'surprise');
+    })) {
+      return 'Cupon sorpresa activo';
+    }
+
+    if (promotions.some(function(promotion) {
+      var state = promotion.visibility_status || promotion.status || 'active';
+      return state === 'active';
+    })) {
+      return 'Ofertas y descuentos activos';
+    }
+
+    return 'Ofertas, cupones sorpresa y descuentos';
   }
 
   function promotionStateLabel(state) {

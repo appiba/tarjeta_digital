@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Escaner | Loyalty</title>
-  <link rel="stylesheet" href="../assets/css/main.css?v=wallet-v17">
-  <link rel="stylesheet" href="../assets/css/business.css?v=wallet-v17">
+  <link rel="stylesheet" href="../assets/css/main.css?v=wallet-v18">
+  <link rel="stylesheet" href="../assets/css/business.css?v=wallet-v18">
 </head>
 <body class="business-accent" data-root="../">
   <div class="app-shell">
@@ -35,9 +35,15 @@
         <article class="scan-stage">
           <div>
             <h2>Escanear cliente</h2>
-            <p data-scanner-state>Preparando modulo...</p>
+            <p data-scanner-state>Abre la camara y apunta al QR que muestra el cliente.</p>
             <div class="scan-frame" aria-label="Area de escaneo QR">
+              <video data-camera-video muted playsinline hidden></video>
               <i data-lucide="scan-line"></i>
+              <span data-camera-readout>Camara lista</span>
+            </div>
+            <div class="scan-actions">
+              <button class="button button--primary" type="button" data-camera-start><i data-lucide="camera"></i>Abrir camara</button>
+              <button class="button button--ghost" type="button" data-camera-stop hidden><i data-lucide="camera-off"></i>Detener</button>
             </div>
             <form class="form scanner-form" data-wallet-scan-form>
               <div class="field">
@@ -67,11 +73,12 @@
     </main>
   </div>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script src="../assets/js/utils.js?v=wallet-v17"></script>
-  <script src="../assets/js/api.js?v=wallet-v17"></script>
-  <script src="../assets/js/auth.js?v=wallet-v17"></script>
-  <script src="../assets/js/business.js?v=wallet-v17"></script>
-  <script src="../assets/js/scanner.js?v=wallet-v17"></script>
+  <script src="../assets/js/utils.js?v=wallet-v18"></script>
+  <script src="../assets/js/api.js?v=wallet-v18"></script>
+  <script src="../assets/js/auth.js?v=wallet-v18"></script>
+  <script src="../assets/js/business.js?v=wallet-v18"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script src="../assets/js/scanner.js?v=wallet-v18"></script>
   <script>
     BusinessApp.init('Escanear', ['business_owner', 'staff']).then(function(context) {
       if (context) {
