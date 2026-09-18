@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mi tarjeta | Loyalty</title>
-  <link rel="stylesheet" href="../assets/css/main.css?v=wallet-v18">
-  <link rel="stylesheet" href="../assets/css/client.css?v=wallet-v18">
+  <link rel="stylesheet" href="../assets/css/main.css?v=wallet-v19">
+  <link rel="stylesheet" href="../assets/css/client.css?v=wallet-v19">
 </head>
 <body data-root="../">
   <main class="client-shell">
@@ -31,14 +31,8 @@
             <p data-progress-left>Presenta esta tarjeta en el local.</p>
             <div class="reward-strip"><i data-lucide="gift"></i><strong>Beneficios: <span data-reward-name>Ofertas y cupones</span></strong></div>
             <div class="reward-strip reward-strip--soft"><i data-lucide="sparkles"></i><strong><span data-welcome-title>Beneficio de bienvenida</span>: <span data-welcome-status>No configurado</span></strong></div>
-            <div class="visual-qr" aria-label="QR visual">
-              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <div class="card-real-qr" aria-label="QR real de Wallet">
+              <img data-card-qr-image alt="QR real de Wallet">
             </div>
             <p style="text-align:center;">Mi QR Loyalty: <span data-wallet-display></span></p>
           </div>
@@ -66,9 +60,9 @@
     <a href="perfil.html"><i data-lucide="user"></i>Perfil</a>
   </nav>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script src="../assets/js/utils.js?v=wallet-v18"></script>
-  <script src="../assets/js/api.js?v=wallet-v18"></script>
-  <script src="../assets/js/client.js?v=wallet-v18"></script>
+  <script src="../assets/js/utils.js?v=wallet-v19"></script>
+  <script src="../assets/js/api.js?v=wallet-v19"></script>
+  <script src="../assets/js/client.js?v=wallet-v19"></script>
   <script>ClientApp.initCard();</script>
 </body>
 </html>

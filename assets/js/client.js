@@ -300,6 +300,7 @@
     setText('[data-wallet-display]', data.wallet_qr && data.wallet_qr.display ? data.wallet_qr.display : customer.wallet_id || '');
     setText('[data-welcome-title]', welcome.enabled ? welcome.title : 'Cupones sorpresa y descuentos');
     setText('[data-welcome-status]', welcome.enabled ? statusLabel(welcome.status) : 'Se activan por calendario');
+    paintCardQr(data.wallet_qr || {}, customer);
     paintProgressBeans(card.current || 0, card.goal || 10);
     paintMiniList('[data-card-coupons]', coupons, renderCouponItem, 'Aun no tienes cupones.');
     paintMiniList('[data-card-promotions]', data.promotions || [], renderPromotionItem, 'Aun no hay ofertas o cupones sorpresa activos.');
@@ -336,6 +337,19 @@
       img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=' + encodeURIComponent(payload);
       img.alt = 'QR de Wallet ' + (walletQr.display || '');
     }
+  }
+
+  function paintCardQr(walletQr, customer) {
+    var img = AppUtils.qs('[data-card-qr-image]');
+    var walletId = walletQr.wallet_id || customer.wallet_id || '';
+    var payload = walletQr.scanner_url || walletQr.payload || walletId;
+
+    if (!img || !payload) {
+      return;
+    }
+
+    img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=' + encodeURIComponent(payload);
+    img.alt = 'QR real de Wallet ' + (walletQr.display || walletId);
   }
 
   function paintMiniList(selector, rows, renderer, emptyMessage) {

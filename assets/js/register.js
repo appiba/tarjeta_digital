@@ -282,6 +282,12 @@
       },
       wallet_id: walletId,
       wallet_url: data.wallet_url || '../client/?local=1',
+      wallet_qr: data.wallet_qr || {
+        wallet_id: walletId,
+        payload: walletId,
+        scanner_url: '../business/scanner.html?wallet=' + encodeURIComponent(walletId),
+        display: walletId
+      },
       card_url: cardUrl,
       cards: [{
         business: business,
