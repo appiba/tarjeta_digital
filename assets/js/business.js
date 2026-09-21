@@ -1,7 +1,7 @@
 (function() {
-  async function init(pageName, roles) {
+  async function init(pageName, roles, options) {
     Auth.bindLogout();
-    var context = await Auth.protectPage(roles || ['business_owner', 'staff']);
+    var context = await Auth.protectPage(roles || ['business_owner', 'staff'], options || {});
 
     if (!context) {
       return;

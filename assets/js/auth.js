@@ -41,26 +41,43 @@
     });
   }
 
-  async function protectPage(roles) {
-    var session = AppAPI.getSession();
+  function isSessionExpired(session) {
+    var expiresAt = session && session.expires_at ? new Date(session.expires_at) : null;
 
-    if (!session || !session.token || !session.user) {
-      redirectToLogin();
-      return null;
-    }
+    return !expiresAt || Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= Date.now();
+  }
 
-    if (!userCanEnter(session.user, roles)) {
-      redirectByRole(session.user.role);
-      return null;
-    }
+  function isAuthFailure(errorOrResult) {
+    var code = String(errorOrResult && errorOrResult.error || '').toLowerCase();
 
-    paintUser(session.user);
+    return code === 'unauthorized' || code === 'forbidden';
+  }
+
+  function localContext(session) {
+    return {
+      user: session.user,
+      session: {
+        expires_at: session.expires_at,
+        role: session.user.role,
+        status: 'cached'
+      }
+    };
+  }
+
+  async function refreshSession(session, options) {
+    options = options || {};
 
     try {
       var result = await AppAPI.apiRequest('me');
 
       if (!result.success) {
-        throw new Error(result.message || 'Sesion invalida.');
+        if (isAuthFailure(result)) {
+          AppAPI.clearSession();
+          redirectToLogin();
+          return null;
+        }
+
+        throw new Error(result.message || 'No se pudo validar la sesion.');
       }
 
       AppAPI.setSession({
@@ -72,10 +89,43 @@
 
       return result.data;
     } catch (error) {
-      AppUtils.toast(error.message, 'error');
+      if (options.silent) {
+        return null;
+      }
+
+      AppUtils.toast('Sesion local activa. Si el internet esta lento, intenta otra vez en unos segundos.', 'error');
+      return localContext(session);
+    }
+  }
+
+  async function protectPage(roles, options) {
+    options = options || {};
+    var session = AppAPI.getSession();
+
+    if (!session || !session.token || !session.user) {
       redirectToLogin();
       return null;
     }
+
+    if (isSessionExpired(session)) {
+      AppAPI.clearSession();
+      redirectToLogin();
+      return null;
+    }
+
+    if (!userCanEnter(session.user, roles)) {
+      redirectByRole(session.user.role);
+      return null;
+    }
+
+    paintUser(session.user);
+
+    if (options.preferCache) {
+      refreshSession(session, { silent: true });
+      return localContext(session);
+    }
+
+    return refreshSession(session);
   }
 
   function bindLogout() {

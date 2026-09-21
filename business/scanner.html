@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Escaner | Loyalty</title>
-  <link rel="stylesheet" href="../assets/css/main.css?v=wallet-v19">
-  <link rel="stylesheet" href="../assets/css/business.css?v=wallet-v19">
+  <link rel="stylesheet" href="../assets/css/main.css?v=wallet-v20">
+  <link rel="stylesheet" href="../assets/css/business.css?v=wallet-v20">
 </head>
 <body class="business-accent" data-root="../">
   <div class="app-shell">
@@ -73,14 +73,13 @@
     </main>
   </div>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script src="../assets/js/utils.js?v=wallet-v19"></script>
-  <script src="../assets/js/api.js?v=wallet-v19"></script>
-  <script src="../assets/js/auth.js?v=wallet-v19"></script>
-  <script src="../assets/js/business.js?v=wallet-v19"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-  <script src="../assets/js/scanner.js?v=wallet-v19"></script>
+  <script src="../assets/js/utils.js?v=wallet-v20"></script>
+  <script src="../assets/js/api.js?v=wallet-v20"></script>
+  <script src="../assets/js/auth.js?v=wallet-v20"></script>
+  <script src="../assets/js/business.js?v=wallet-v20"></script>
+  <script src="../assets/js/scanner.js?v=wallet-v20"></script>
   <script>
-    BusinessApp.init('Escanear', ['business_owner', 'staff']).then(function(context) {
+    BusinessApp.init('Escanear', ['business_owner', 'staff'], { preferCache: true }).then(function(context) {
       if (context) {
         ScannerApp.initScanner(context);
       }

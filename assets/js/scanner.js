@@ -6,6 +6,7 @@
   var isScanning = false;
   var lastScannedValue = '';
   var lastScannedAt = 0;
+  var jsQrLoadPromise = null;
 
   function initScanner(context) {
     var form = AppUtils.qs('[data-wallet-scan-form]');
@@ -114,6 +115,20 @@
       }
     }
 
+    if (!detector && !window.jsQR) {
+      setCameraReadout('Preparando lector QR...');
+      loadJsQrFallback()
+        .then(function() {
+          if (isScanning) {
+            setCameraReadout('Buscando QR...');
+          }
+        })
+        .catch(function() {
+          setState('No se pudo cargar el lector automatico. Puedes pegar el codigo manual.');
+          setCameraReadout('Usa codigo manual');
+        });
+    }
+
     scanTimer = window.setInterval(async function() {
       if (!isScanning || !video.videoWidth || !video.videoHeight) {
         return;
@@ -149,6 +164,28 @@
         handleDecodedWallet(value);
       }
     }, 350);
+  }
+
+  function loadJsQrFallback() {
+    if (window.jsQR) {
+      return Promise.resolve();
+    }
+
+    if (jsQrLoadPromise) {
+      return jsQrLoadPromise;
+    }
+
+    jsQrLoadPromise = new Promise(function(resolve, reject) {
+      var script = document.createElement('script');
+
+      script.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
+      script.async = true;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+
+    return jsQrLoadPromise;
   }
 
   function handleDecodedWallet(value) {
