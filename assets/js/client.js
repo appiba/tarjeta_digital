@@ -300,7 +300,7 @@
     setText('[data-wallet-display]', data.wallet_qr && data.wallet_qr.display ? data.wallet_qr.display : customer.wallet_id || '');
     setText('[data-welcome-title]', welcome.enabled ? welcome.title : 'Cupones sorpresa y descuentos');
     setText('[data-welcome-status]', welcome.enabled ? statusLabel(welcome.status) : 'Se activan por calendario');
-    paintCardQr(data.wallet_qr || {}, customer);
+    paintCardQr(data.wallet_qr || {}, customer, card);
     paintProgressBeans(card.current || 0, card.goal || 10);
     paintMiniList('[data-card-coupons]', coupons, renderCouponItem, 'Aun no tienes cupones.');
     paintMiniList('[data-card-promotions]', data.promotions || [], renderPromotionItem, 'Aun no hay ofertas o cupones sorpresa activos.');
@@ -339,10 +339,10 @@
     }
   }
 
-  function paintCardQr(walletQr, customer) {
+  function paintCardQr(walletQr, customer, card) {
     var img = AppUtils.qs('[data-card-qr-image]');
     var walletId = walletQr.wallet_id || customer.wallet_id || '';
-    var payload = walletQr.scanner_url || walletQr.payload || walletId;
+    var payload = buildCardScannerPayload(walletQr, walletId, card && card.card_id);
 
     if (!img || !payload) {
       return;
@@ -350,6 +350,35 @@
 
     img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=' + encodeURIComponent(payload);
     img.alt = 'QR real de Wallet ' + (walletQr.display || walletId);
+  }
+
+  function buildCardScannerPayload(walletQr, walletId, cardId) {
+    var source = walletQr.scanner_url || walletQr.payload || walletId;
+    var url;
+
+    if (!walletId && walletQr.wallet_id) {
+      walletId = walletQr.wallet_id;
+    }
+
+    try {
+      url = new URL(source, window.location.href);
+    } catch (error) {
+      url = new URL('../business/scanner.html', window.location.href);
+    }
+
+    if (url.pathname.indexOf('/business/scanner.html') === -1) {
+      url = new URL('../business/scanner.html', window.location.href);
+    }
+
+    if (walletId) {
+      url.searchParams.set('wallet', walletId);
+    }
+
+    if (cardId) {
+      url.searchParams.set('card', cardId);
+    }
+
+    return url.href;
   }
 
   function paintMiniList(selector, rows, renderer, emptyMessage) {

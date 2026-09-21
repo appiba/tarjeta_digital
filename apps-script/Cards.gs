@@ -183,6 +183,6 @@ function getPublicCard_(data) {
     history: history,
     card_url: buildClientCardUrl_(card.card_id),
     wallet_url: buildClientWalletUrl_(customer.wallet_id),
-    wallet_qr: buildWalletQrPayload_(customer.wallet_id)
+    wallet_qr: buildCardQrPayload_(customer.wallet_id, card.card_id)
   };
 }

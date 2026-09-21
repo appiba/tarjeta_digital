@@ -193,15 +193,11 @@ function buildCustomerWallet_(customer) {
 
 function scanWallet_(context, data) {
   var walletId = extractWalletId_(data.wallet_id || data.wallet || data.code || data.qr || '');
+  var cardId = sanitizeText_(data.card_id || data.card || '', 80);
+  var fast = isTruthy_(data.fast);
 
-  if (!walletId) {
+  if (!walletId && !cardId) {
     throw appError_('Indica el wallet_id del cliente.', 'missing_wallet');
-  }
-
-  var customer = getCustomerByWalletId_(walletId);
-
-  if (!customer) {
-    throw appError_('Wallet no encontrada.', 'wallet_not_found');
   }
 
   var business = getBusinessById_(context.user.business_id);
@@ -216,7 +212,33 @@ function scanWallet_(context, data) {
     throw appError_('Este negocio aun no tiene programa activo.', 'program_not_found');
   }
 
-  var card = getCustomerCardForBusiness_(customer.customer_id, business.business_id);
+  var customer = null;
+  var card = null;
+
+  if (cardId) {
+    card = getCustomerCardById_(cardId);
+
+    if (!card || card.business_id !== business.business_id) {
+      throw appError_('Tarjeta no encontrada en este negocio.', 'card_not_found');
+    }
+
+    customer = getCustomerById_(card.customer_id);
+  }
+
+  if (!customer && walletId) {
+    customer = getCustomerByWalletId_(walletId);
+
+    if (!customer) {
+      throw appError_('Wallet no encontrada.', 'wallet_not_found');
+    }
+
+    card = getCustomerCardForBusiness_(customer.customer_id, business.business_id);
+  }
+
+  if (!customer) {
+    throw appError_('Cliente no encontrado.', 'customer_not_found');
+  }
+
   var created = false;
 
   if (!card && data.create_if_missing) {
@@ -247,9 +269,9 @@ function scanWallet_(context, data) {
     can_add: !card,
     card: card ? publicCustomerCard_(card, program) : null,
     welcome_reward: publicWelcomeReward_(program, card),
-    coupons: card ? getCouponsForCard_(card.card_id).map(publicCustomerCoupon_) : [],
-    available_coupons: card ? getAvailableCouponsForCard_(card.card_id).map(publicCustomerCoupon_) : [],
-    history: card ? getHistoryForCard_(card.card_id) : []
+    coupons: (!fast && card) ? getCouponsForCard_(card.card_id).map(publicCustomerCoupon_) : [],
+    available_coupons: (!fast && card) ? getAvailableCouponsForCard_(card.card_id).map(publicCustomerCoupon_) : [],
+    history: (!fast && card) ? getHistoryForCard_(card.card_id) : []
   };
 }
 
@@ -391,6 +413,19 @@ function buildWalletQrPayload_(walletId) {
   };
 }
 
+function buildCardQrPayload_(walletId, cardId) {
+  var cleanWalletId = String(walletId || '').trim().toUpperCase();
+  var cleanCardId = String(cardId || '').trim().toUpperCase();
+
+  return {
+    wallet_id: cleanWalletId,
+    card_id: cleanCardId,
+    payload: cleanWalletId,
+    scanner_url: buildBusinessScannerWalletUrl_(cleanWalletId, cleanCardId),
+    display: abbreviateWalletId_(cleanWalletId)
+  };
+}
+
 function extractWalletId_(value) {
   var text = String(value || '').trim();
 
@@ -421,12 +456,18 @@ function buildClientWalletUrl_(walletId) {
   return appUrl.replace(/\/?$/, '/') + 'client/?wallet=' + encodeURIComponent(walletId || '');
 }
 
-function buildBusinessScannerWalletUrl_(walletId) {
+function buildBusinessScannerWalletUrl_(walletId, cardId) {
   var appUrl = getConfigValue_('APP_URL', '');
 
   if (!appUrl) {
     return String(walletId || '');
   }
 
-  return appUrl.replace(/\/?$/, '/') + 'business/scanner.html?wallet=' + encodeURIComponent(walletId || '');
+  var url = appUrl.replace(/\/?$/, '/') + 'business/scanner.html?wallet=' + encodeURIComponent(walletId || '');
+
+  if (cardId) {
+    url += '&card=' + encodeURIComponent(cardId);
+  }
+
+  return url;
 }

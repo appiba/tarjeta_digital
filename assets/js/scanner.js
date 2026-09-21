@@ -7,10 +7,16 @@
   var lastScannedValue = '';
   var lastScannedAt = 0;
   var jsQrLoadPromise = null;
+  var currentCustomer = {};
+  var currentBusiness = {};
+  var currentProgram = {};
+  var currentWelcome = {};
+  var currentCoupons = [];
+  var currentHistory = [];
 
   function initScanner(context) {
     var form = AppUtils.qs('[data-wallet-scan-form]');
-    var walletFromUrl = new URLSearchParams(window.location.search).get('wallet');
+    var scanFromUrl = readScanPayload(window.location.href);
 
     setState('Abre la camara y apunta al QR que muestra el cliente.');
     bindCameraControls();
@@ -19,14 +25,15 @@
       form.addEventListener('submit', function(event) {
         event.preventDefault();
         var formData = new FormData(form);
-        scanWallet(normalizeWalletInput(formData.get('wallet')));
+        scanWallet(readScanPayload(formData.get('wallet')));
       });
     }
 
-    if (walletFromUrl && form) {
+    if ((scanFromUrl.wallet || scanFromUrl.cardId) && form) {
       var input = form.querySelector('[name="wallet"]');
-      input.value = walletFromUrl;
-      scanWallet(walletFromUrl);
+      input.value = scanFromUrl.wallet || scanFromUrl.cardId;
+      primeQuickCard(scanFromUrl);
+      scanWallet(scanFromUrl);
     }
 
     window.addEventListener('beforeunload', stopCamera);
@@ -189,7 +196,8 @@
   }
 
   function handleDecodedWallet(value) {
-    var normalized = normalizeWalletInput(value);
+    var scan = readScanPayload(value);
+    var normalized = scan.wallet || scan.cardId;
     var now = Date.now();
 
     if (!normalized || (normalized === lastScannedValue && now - lastScannedAt < 3000)) {
@@ -205,9 +213,10 @@
     }
 
     setCameraReadout('QR leido');
-    setState('QR leido. Cargando ficha del cliente...');
+    setState(scan.cardId ? 'QR leido. Ya puedes registrar el movimiento.' : 'QR leido. Cargando ficha del cliente...');
     stopCamera();
-    scanWallet(normalized);
+    primeQuickCard(scan);
+    scanWallet(scan);
   }
 
   function stopCamera() {
@@ -255,11 +264,12 @@
     }
   }
 
-  async function scanWallet(wallet, createIfMissing) {
+  async function scanWallet(scan, createIfMissing) {
     var button = AppUtils.qs('[data-wallet-scan-form] button[type="submit"]');
-    var normalizedWallet = normalizeWalletInput(wallet);
+    var details = typeof scan === 'object' && scan !== null ? scan : readScanPayload(scan);
+    var normalizedWallet = details.wallet || '';
 
-    if (!normalizedWallet) {
+    if (!normalizedWallet && !details.cardId) {
       AppUtils.toast('Escanea el QR del cliente o pega el codigo de Wallet.', 'error');
       return;
     }
@@ -269,6 +279,8 @@
     try {
       var result = await AppAPI.apiRequest('scanWallet', {
         wallet: normalizedWallet,
+        card_id: details.cardId || '',
+        fast: Boolean(details.cardId),
         create_if_missing: Boolean(createIfMissing)
       });
 
@@ -299,6 +311,12 @@
     var coupons = data.available_coupons || [];
 
     if (!data.has_card) {
+      currentCustomer = customer;
+      currentBusiness = business;
+      currentProgram = program;
+      currentWelcome = welcome;
+      currentCoupons = coupons;
+      currentHistory = data.history || [];
       currentCard = null;
       container.innerHTML = '<h2>Este cliente todavia no pertenece a tu programa</h2>' +
         '<p><strong>' + escapeHtml(customer.full_name || 'Cliente') + '</strong></p>' +
@@ -310,13 +328,19 @@
     }
 
     currentCard = card;
+    currentCustomer = customer;
+    currentBusiness = business;
+    currentProgram = program;
+    currentWelcome = welcome;
+    currentCoupons = coupons;
+    currentHistory = data.history || [];
     container.innerHTML = '<h2>' + escapeHtml(customer.full_name || 'Cliente') + '</h2>' +
       '<p>' + escapeHtml(business.business_name || 'Mi negocio') + '</p>' +
       '<div class="settings-list">' +
-        '<div><span>Sellos</span><strong>' + escapeHtml(card.stamps || 0) + '</strong></div>' +
-        '<div><span>Puntos</span><strong>' + escapeHtml(card.points || 0) + '</strong></div>' +
-        '<div><span>Visitas</span><strong>' + escapeHtml(card.visits || 0) + '</strong></div>' +
-        '<div><span>Progreso</span><strong>' + escapeHtml(card.progress_percent || 0) + '%</strong></div>' +
+        '<div><span>Sellos</span><strong data-scan-stamps>' + escapeHtml(card.stamps || 0) + '</strong></div>' +
+        '<div><span>Puntos</span><strong data-scan-points>' + escapeHtml(card.points || 0) + '</strong></div>' +
+        '<div><span>Visitas</span><strong data-scan-visits>' + escapeHtml(card.visits || 0) + '</strong></div>' +
+        '<div><span>Progreso</span><strong data-scan-progress>' + escapeHtml(card.progress_percent || 0) + '%</strong></div>' +
         '<div><span>Bienvenida</span><strong>' + escapeHtml(welcome.enabled ? statusLabel(welcome.status) : 'No configurado') + '</strong></div>' +
       '</div>' +
       '<div class="client-action-grid" style="margin-top:16px;">' +
@@ -327,6 +351,51 @@
       '</div>' +
       '<div class="scanner-coupons"><h3>Cupones disponibles</h3>' + renderCoupons(coupons) + '</div>' +
       '<div class="client-list scanner-history">' + renderHistory(data.history || []) + '</div>';
+
+    bindResultActions(container);
+    AppUtils.mountIcons();
+  }
+
+  function primeQuickCard(scan) {
+    if (!scan || !scan.cardId) {
+      return;
+    }
+
+    currentCard = Object.assign({
+      card_id: scan.cardId,
+      stamps: 0,
+      points: 0,
+      visits: 0,
+      current: 0,
+      goal: 10,
+      progress_percent: 0
+    }, currentCard && currentCard.card_id === scan.cardId ? currentCard : {});
+
+    currentCustomer = currentCustomer || {};
+    currentBusiness = currentBusiness || {};
+    currentProgram = currentProgram || {};
+    currentWelcome = currentWelcome || {};
+    currentCoupons = currentCoupons || [];
+    currentHistory = currentHistory || [];
+
+    var container = AppUtils.qs('[data-scanner-result]');
+
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML = '<h2>Codigo leido</h2>' +
+      '<p>Tarjeta fija lista. Registra un solo movimiento y espera el mensaje de exito.</p>' +
+      '<div class="settings-list">' +
+        '<div><span>Tarjeta</span><strong>' + escapeHtml(abbreviateCode(scan.cardId)) + '</strong></div>' +
+        '<div><span>Estado</span><strong data-quick-status>Lista para marcar</strong></div>' +
+      '</div>' +
+      '<div class="client-action-grid" style="margin-top:16px;">' +
+        '<button class="button button--primary" type="button" data-card-action="add_stamp">+1 Sello</button>' +
+        '<button class="button button--ghost" type="button" data-card-action="add_visit">+1 Visita</button>' +
+        '<button class="button button--ghost" type="button" data-card-action="add_points">Agregar puntos</button>' +
+      '</div>' +
+      '<p class="muted">Los detalles completos se cargan en segundo plano.</p>';
 
     bindResultActions(container);
     AppUtils.mountIcons();
@@ -357,6 +426,10 @@
       return;
     }
 
+    if (button && button.disabled) {
+      return;
+    }
+
     var amount = '';
 
     if (action === 'add_points') {
@@ -367,7 +440,17 @@
       }
     }
 
-    AppUtils.setButtonLoading(button, true, 'Guardando...');
+    var previousCard = Object.assign({}, currentCard);
+    var optimisticCard = getOptimisticCard(currentCard, action, amount);
+
+    if (optimisticCard) {
+      currentCard = optimisticCard;
+      updateDisplayedCard(currentCard);
+    }
+
+    setQuickStatus('Registrando...');
+    setState('Registrando movimiento...');
+    AppUtils.setButtonLoading(button, true, 'Registrando...');
 
     try {
       var result = await AppAPI.apiRequest('applyBusinessCustomerAction', {
@@ -383,7 +466,7 @@
 
       paintResult({
         customer: result.data.customer,
-        business: {},
+        business: currentBusiness || {},
         has_card: true,
         card: result.data.card,
         program: result.data.program,
@@ -392,8 +475,12 @@
         available_coupons: result.data.coupons ? result.data.coupons.filter(function(coupon) { return coupon.status === 'available'; }) : [],
         history: result.data.history
       });
-      AppUtils.toast('Movimiento registrado.', 'success');
+      setState('Movimiento registrado con exito.');
+      AppUtils.toast('Registrado con exito.', 'success');
     } catch (error) {
+      currentCard = previousCard;
+      updateDisplayedCard(currentCard);
+      setQuickStatus('No registrado');
       AppUtils.toast(error.message, 'error');
     } finally {
       AppUtils.setButtonLoading(button, false);
@@ -460,20 +547,89 @@
     });
   }
 
+  function setQuickStatus(message) {
+    AppUtils.qsa('[data-quick-status]').forEach(function(node) {
+      node.textContent = message;
+    });
+  }
+
+  function updateDisplayedCard(card) {
+    if (!card) {
+      return;
+    }
+
+    setText('[data-scan-stamps]', card.stamps || 0);
+    setText('[data-scan-points]', card.points || 0);
+    setText('[data-scan-visits]', card.visits || 0);
+    setText('[data-scan-progress]', (card.progress_percent || 0) + '%');
+  }
+
+  function setText(selector, value) {
+    AppUtils.qsa(selector).forEach(function(node) {
+      node.textContent = value === undefined || value === null ? '' : String(value);
+    });
+  }
+
+  function getOptimisticCard(card, action, amount) {
+    var copy = Object.assign({}, card);
+    var goal = parseInt(copy.goal || '10', 10) || 10;
+
+    if (action === 'add_stamp') {
+      copy.stamps = (parseInt(copy.stamps || '0', 10) || 0) + 1;
+      copy.current = copy.stamps;
+    } else if (action === 'add_visit') {
+      copy.visits = (parseInt(copy.visits || '0', 10) || 0) + 1;
+      copy.current = copy.visits;
+    } else if (action === 'add_points') {
+      copy.points = (parseInt(copy.points || '0', 10) || 0) + (parseInt(amount || '0', 10) || 0);
+      copy.current = copy.points;
+    } else {
+      return null;
+    }
+
+    copy.progress_percent = goal > 0 ? Math.min(100, Math.round(((parseInt(copy.current || '0', 10) || 0) / goal) * 100)) : 0;
+    return copy;
+  }
+
   function normalizeWalletInput(value) {
+    return readScanPayload(value).wallet;
+  }
+
+  function readScanPayload(value) {
     var text = String(value || '').trim();
+    var result = {
+      wallet: '',
+      cardId: '',
+      raw: text
+    };
 
     if (!text) {
-      return '';
+      return result;
     }
 
     try {
       var url = new URL(text);
-      return url.searchParams.get('wallet') || url.searchParams.get('wallet_id') || text;
+      result.wallet = url.searchParams.get('wallet') || url.searchParams.get('wallet_id') || '';
+      result.cardId = url.searchParams.get('card') || url.searchParams.get('card_id') || '';
     } catch (error) {
-      var match = text.match(/(?:wallet|wallet_id)=([^&\s]+)/i);
-      return match ? decodeURIComponent(match[1]) : text;
+      var walletMatch = text.match(/(?:wallet|wallet_id)=([^&\s]+)/i);
+      var cardMatch = text.match(/(?:card|card_id)=([^&\s]+)/i);
+      result.wallet = walletMatch ? decodeURIComponent(walletMatch[1]) : '';
+      result.cardId = cardMatch ? decodeURIComponent(cardMatch[1]) : '';
     }
+
+    if (!result.wallet && /^WALLET[\w-]*/i.test(text)) {
+      result.wallet = text;
+    }
+
+    if (!result.cardId && /^CRD[\w-]*/i.test(text)) {
+      result.cardId = text;
+    }
+
+    result.wallet = String(result.wallet || '').trim().toUpperCase();
+    result.cardId = String(result.cardId || '').trim().toUpperCase();
+
+    return result;
   }
 
   function statusLabel(status) {
@@ -503,6 +659,11 @@
 
   function escapeAttr(value) {
     return escapeHtml(value).replace(/`/g, '&#096;');
+  }
+
+  function abbreviateCode(value) {
+    var text = String(value || '');
+    return text.length > 10 ? text.slice(0, 4) + '...' + text.slice(-6) : text;
   }
 
   window.ScannerApp = {
