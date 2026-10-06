@@ -1,6 +1,6 @@
 function ensureWalletSchema_() {
   var spreadsheet = getSpreadsheet_();
-  ['CUSTOMERS', 'CUSTOMER_CARDS', 'CUSTOMER_COUPONS', 'CUSTOMER_SESSIONS', 'LOYALTY_PROGRAMS', 'TRANSACTIONS', 'REDEMPTIONS', 'PROMOTIONS'].forEach(function(sheetName) {
+  ['CUSTOMERS', 'PASSES', 'COUPONS', 'CUSTOMER_CARDS', 'CUSTOMER_COUPONS', 'CUSTOMER_SESSIONS', 'LOYALTY_PROGRAMS', 'TRANSACTIONS', 'REDEMPTIONS', 'PROMOTIONS'].forEach(function(sheetName) {
     ensureSheet_(spreadsheet, sheetName, SHEET_SCHEMAS[sheetName]);
   });
 }
@@ -35,7 +35,8 @@ function getCustomerByPhone_(phone) {
 function getCustomerByWalletId_(walletId) {
   ensureWalletSchema_();
 
-  var customer = findRowByValue_('CUSTOMERS', 'wallet_id', String(walletId || '').trim().toUpperCase());
+  var code = String(walletId || '').trim().toUpperCase();
+  var customer = findRowByValue_('CUSTOMERS', 'customer_code', code) || findRowByValue_('CUSTOMERS', 'wallet_id', code);
   return customer ? ensureCustomerWalletFields_(customer) : null;
 }
 
@@ -52,14 +53,18 @@ function createCustomer_(data) {
   var timestamp = nowIso_();
   var phoneNormalized = normalizeCustomerPhone_(data.phone);
   var customerId = generateId_('CUS');
-  var walletId = generateUniqueWalletId_();
+  var customerCode = generateUniqueCustomerCode_();
+  var walletId = customerCode;
 
   appendObject_('CUSTOMERS', {
     customer_id: customerId,
+    customer_code: customerCode,
     wallet_id: walletId,
     full_name: sanitizeText_(data.full_name || data.name || 'Cliente Loyalty', 140),
     phone: phoneNormalized,
     phone_normalized: phoneNormalized,
+    total_passes: 0,
+    current_level: 1,
     email: normalizeEmail_(data.email || ''),
     birthday: sanitizeText_(data.birthday || '', 40),
     avatar_url: sanitizeText_(data.avatar_url || '', 500),
@@ -128,7 +133,15 @@ function ensureCustomerWalletFields_(customer) {
   var updates = {};
 
   if (!customer.wallet_id) {
-    updates.wallet_id = generateUniqueWalletId_();
+    updates.wallet_id = customer.customer_code || generateUniqueCustomerCode_();
+  }
+
+  if (!customer.customer_code) {
+    updates.customer_code = customer.wallet_id && String(customer.wallet_id).indexOf('LOY-') === 0 ? customer.wallet_id : generateUniqueCustomerCode_();
+  }
+
+  if (customer.wallet_id && customer.wallet_id !== (customer.customer_code || updates.customer_code)) {
+    updates.wallet_id = customer.customer_code || updates.customer_code;
   }
 
   if (!customer.phone_normalized && customer.phone) {
@@ -141,6 +154,14 @@ function ensureCustomerWalletFields_(customer) {
 
   if (!customer.updated_at) {
     updates.updated_at = customer.created_at || nowIso_();
+  }
+
+  if (customer.total_passes === '' || customer.total_passes === undefined || customer.total_passes === null) {
+    updates.total_passes = 0;
+  }
+
+  if (!customer.current_level) {
+    updates.current_level = calculateLevel_(parseInt(customer.total_passes || '0', 10) || 0);
   }
 
   if (!customer.status) {
@@ -156,10 +177,22 @@ function ensureCustomerWalletFields_(customer) {
 }
 
 function generateUniqueWalletId_() {
-  var walletId = generateId_('WALLET');
+  return generateUniqueCustomerCode_();
+}
 
-  while (findRowByValue_('CUSTOMERS', 'wallet_id', walletId)) {
-    walletId = generateId_('WALLET');
+function generateUniqueCustomerCode_() {
+  var alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var walletId = 'LOY-';
+
+  for (var index = 0; index < 6; index += 1) {
+    walletId += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+  }
+
+  while (findRowByValue_('CUSTOMERS', 'customer_code', walletId) || findRowByValue_('CUSTOMERS', 'wallet_id', walletId)) {
+    walletId = 'LOY-';
+    for (var retry = 0; retry < 6; retry += 1) {
+      walletId += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+    }
   }
 
   return walletId;
@@ -241,10 +274,13 @@ function getCustomerContext_(data) {
 function publicCustomer_(customer) {
   return {
     customer_id: customer.customer_id,
-    wallet_id: customer.wallet_id || '',
+    customer_code: customer.customer_code || customer.wallet_id || '',
+    wallet_id: customer.customer_code || customer.wallet_id || '',
     full_name: customer.full_name,
     phone: customer.phone || '',
     phone_normalized: customer.phone_normalized || customer.phone || '',
+    total_passes: parseInt(customer.total_passes || '0', 10) || 0,
+    current_level: parseInt(customer.current_level || '1', 10) || 1,
     email: customer.email || '',
     birthday: customer.birthday || '',
     avatar_url: customer.avatar_url || '',
@@ -255,6 +291,7 @@ function publicCustomer_(customer) {
 function publicCustomerSession_(session) {
   return {
     customer_id: session.customer_id,
+    customer_code: session.wallet_id,
     wallet_id: session.wallet_id,
     token: session.token,
     expires_at: session.expires_at

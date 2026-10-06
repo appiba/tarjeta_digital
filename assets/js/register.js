@@ -35,7 +35,7 @@
       currentProgram = result.data.program || {};
 
       paintBusiness(currentBusiness, currentProgram, currentReward);
-      setState('Ingresa tu WhatsApp y abre tu Wallet al instante.');
+      setState('Ingresa tu WhatsApp y abre tu perfil al instante.');
       showStep('phone');
     } catch (error) {
       console.error(error);
@@ -71,13 +71,13 @@
     var formData = new FormData(form);
     currentPhone = String(formData.get('phone') || '').trim();
 
-    AppUtils.setButtonLoading(button, true, 'Abriendo Wallet...');
+    AppUtils.setButtonLoading(button, true, 'Abriendo perfil...');
 
     try {
       await createWalletFromPhone(button);
     } catch (error) {
       console.error(error);
-      AppUtils.toast(error.message || 'No pudimos abrir tu Wallet. Intenta nuevamente.', 'error');
+      AppUtils.toast(error.message || 'No pudimos abrir tu perfil. Intenta nuevamente.', 'error');
     } finally {
       AppUtils.setButtonLoading(button, false);
     }
@@ -90,7 +90,7 @@
     var button = form.querySelector('button[type="submit"]');
     var formData = new FormData(form);
 
-    AppUtils.setButtonLoading(button, true, 'Creando Wallet...');
+    AppUtils.setButtonLoading(button, true, 'Creando perfil...');
 
     try {
       var result = await requestCustomerRegistration({
@@ -102,10 +102,10 @@
       });
 
       if (!result.success) {
-        throw new Error(result.message || 'No se pudo crear tu Wallet.');
+        throw new Error(result.message || 'No se pudo crear tu perfil.');
       }
 
-      completeWalletFlow(result.data, result.data.is_new_customer ? 'Wallet creada' : 'Tarjeta agregada');
+      completeWalletFlow(result.data, result.data.is_new_customer ? 'Perfil creado' : 'Perfil encontrado');
     } catch (error) {
       AppUtils.toast(error.message, 'error');
     } finally {
@@ -132,7 +132,7 @@
         throw new Error(result.message || 'No se pudo continuar.');
       }
 
-      completeWalletFlow(result.data, result.data.is_new_card ? 'Tarjeta agregada' : 'Wallet encontrada');
+      completeWalletFlow(result.data, result.data.is_new_card ? 'Perfil encontrado' : 'Perfil encontrado');
     } catch (error) {
       AppUtils.toast(error.message, 'error');
     } finally {
@@ -141,7 +141,7 @@
   }
 
   async function createWalletFromPhone(button) {
-    AppUtils.setButtonLoading(button, true, 'Creando Wallet...');
+    AppUtils.setButtonLoading(button, true, 'Abriendo perfil...');
 
     var result = await requestCustomerRegistration({
       business_code: currentBusinessCode,
@@ -150,14 +150,20 @@
     });
 
     if (!result.success) {
-      throw new Error(result.message || 'No se pudo crear tu Wallet.');
+      throw new Error(result.message || 'No se pudo crear tu perfil.');
     }
 
-    completeWalletFlow(result.data, result.data.is_new_customer ? 'Wallet activa' : 'Wallet encontrada');
+    completeWalletFlow(result.data, result.data.is_new_customer ? 'Perfil activo' : 'Perfil encontrado');
   }
 
   async function requestCustomerRegistration(payload) {
-    var result = await AppAPI.apiRequest('registerCustomerWallet', payload);
+    var result = await AppAPI.apiRequest('simpleCustomerAccess', payload);
+
+    if (!isNotImplemented(result, 'simpleCustomerAccess')) {
+      return result;
+    }
+
+    result = await AppAPI.apiRequest('registerCustomerWallet', payload);
 
     if (!isNotImplemented(result, 'registerCustomerWallet')) {
       return result;
@@ -181,14 +187,14 @@
 
     var businessName = currentBusiness.business_name || 'este negocio';
     var customerName = data.customer && data.customer.full_name ? data.customer.full_name : 'Cliente';
-    var title = data.has_card ? 'Tu Wallet ya esta activa en ' + businessName + '.' : 'Agregar ' + businessName + ' a tu Wallet';
-    var buttonText = data.has_card ? 'Abrir mi Wallet' : 'Agregar tarjeta';
+    var title = data.has_card ? 'Tu perfil ya esta activo en ' + businessName + '.' : 'Abrir tu perfil Loyalty';
+    var buttonText = 'Abrir mi perfil';
     var action = data.has_card ? 'open-card' : 'add-card';
     var box = AppUtils.qs('[data-register-result]');
 
     showStep('result');
     box.innerHTML = '<h2>Hola, ' + escapeHtml(customerName) + '</h2>' +
-      '<p>Ya encontramos tu Wallet.</p>' +
+      '<p>Ya encontramos tu perfil.</p>' +
       '<div class="wallet-add-card">' +
         '<div class="wallet-add-card__logo">' + escapeHtml(initials(businessName)) + '</div>' +
         '<div><strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(programSummary(currentProgram, currentReward)) + '</span></div>' +
@@ -209,7 +215,7 @@
     }
 
     showStep('profile');
-    setState('Crea tu Wallet una sola vez. Luego podras agregar mas negocios con el mismo WhatsApp.');
+    setState('Crea tu perfil una sola vez. El mismo codigo sirve en todos los negocios.');
   }
 
   function completeWalletFlow(data, title) {
@@ -223,32 +229,33 @@
     var business = data.business || currentBusiness || {};
     var customer = data.customer || {};
     var card = data.card || {};
-    var walletUrl = data.wallet_url || '../client/';
+    var customerCode = customer.customer_code || customer.wallet_id || data.customer_code || (session && session.wallet_id) || '';
+    var walletUrl = data.client_url || data.wallet_url || ('../client/index.html?code=' + encodeURIComponent(customerCode));
     var cardUrl = data.card_url || walletUrl;
     var coupons = data.available_coupons || data.coupons || [];
     var firstCoupon = coupons.length ? coupons[0] : null;
     var fallbackWallet = saveLocalWallet(data);
 
     showStep('result');
-    box.innerHTML = '<h2>' + escapeHtml(title || 'Wallet lista') + '</h2>' +
-      '<p>Tu WhatsApp quedo guardado. Abre tu tarjeta para descubrir ofertas, cupones sorpresa y descuentos cuando el negocio los active.</p>' +
+    box.innerHTML = '<h2>' + escapeHtml(title || 'Perfil listo') + '</h2>' +
+      '<p>Tu telefono quedo guardado. Usaras un solo codigo para todos los locales.</p>' +
       '<ul class="route-list">' +
         '<li><span>Cliente</span><strong>' + escapeHtml(customer.full_name || 'Cliente') + '</strong></li>' +
-        '<li><span>Wallet</span><strong>' + escapeHtml(customer.wallet_id || (session && session.wallet_id) || '') + '</strong></li>' +
+        '<li><span>Codigo unico</span><strong>' + escapeHtml(customerCode) + '</strong></li>' +
         '<li><span>Negocio</span><strong>' + escapeHtml(business.business_name || '') + '</strong></li>' +
-        '<li><span>Tarjeta</span><strong>' + escapeHtml(card.card_id || '') + '</strong></li>' +
+        (data.level ? '<li><span>Nivel</span><strong>' + escapeHtml(data.level.current_level || '1') + '</strong></li>' : '') +
+        (card.card_id ? '<li><span>Tarjeta antigua</span><strong>' + escapeHtml(card.card_id || '') + '</strong></li>' : '') +
         (firstCoupon ? '<li><span>Cupon activo</span><strong>' + escapeHtml(firstCoupon.title || 'Cupon sorpresa') + '</strong></li>' : '') +
       '</ul>' +
       '<div class="approval-actions">' +
-        '<a class="button button--primary" href="' + escapeAttr(cardUrl) + '">Abrir mi Wallet</a>' +
-        '<a class="button button--ghost" href="' + escapeAttr(walletUrl) + '">Ir a Mi Wallet</a>' +
+        '<a class="button button--primary" href="' + escapeAttr(walletUrl) + '">Abrir mi perfil</a>' +
       '</div>';
 
-    AppUtils.toast(title || 'Wallet lista.', 'success');
+    AppUtils.toast(title || 'Perfil listo.', 'success');
     AppUtils.mountIcons();
 
     window.setTimeout(function() {
-      var targetUrl = cardUrl || (fallbackWallet && fallbackWallet.card_url) || walletUrl;
+      var targetUrl = walletUrl || cardUrl || (fallbackWallet && fallbackWallet.card_url);
 
       if (targetUrl) {
         window.location.href = targetUrl;
@@ -263,15 +270,16 @@
     var card = data.card || {};
     var program = data.program || currentProgram || {};
     var reward = data.reward || currentReward || {};
-    var walletId = customer.wallet_id || session.wallet_id || ('LOCAL-' + normalizePhoneForId(currentPhone));
+    var walletId = customer.customer_code || customer.wallet_id || data.customer_code || session.wallet_id || ('LOY-' + normalizePhoneForId(currentPhone).slice(-6));
     var cardId = card.card_id || ('LOCAL-CARD-' + normalizePhoneForId(currentPhone) + '-' + (business.business_code || currentBusinessCode));
-    var cardUrl = data.card_url || ('../client/card.html?card=' + encodeURIComponent(cardId) + '&local=1');
+    var cardUrl = data.card_url || ('../client/index.html?code=' + encodeURIComponent(walletId) + '&local=1');
     var wallet = {
       saved_at: new Date().toISOString(),
       business_code: business.business_code || currentBusinessCode,
       business_id: business.business_id || '',
       customer: {
         customer_id: customer.customer_id || ('LOCAL-CUS-' + normalizePhoneForId(currentPhone)),
+        customer_code: walletId,
         wallet_id: walletId,
         full_name: customer.full_name || 'Cliente Loyalty',
         phone: customer.phone || currentPhone,
@@ -281,13 +289,15 @@
         status: 'active'
       },
       wallet_id: walletId,
-      wallet_url: data.wallet_url || '../client/?local=1',
-      wallet_qr: data.wallet_qr || {
+      wallet_url: data.client_url || data.wallet_url || ('../client/index.html?code=' + encodeURIComponent(walletId) + '&local=1'),
+      wallet_qr: data.qr || data.wallet_qr || {
         wallet_id: walletId,
         payload: walletId,
-        scanner_url: '../business/scanner.html?wallet=' + encodeURIComponent(walletId),
         display: walletId
       },
+      level: data.level || { total_passes: 0, current_level: 1, next_level_at: 10, remaining_to_next_level: 10 },
+      history: data.history || [],
+      promotions: data.promotions || [],
       card_url: cardUrl,
       cards: [{
         business: business,
@@ -317,7 +327,7 @@
       window.localStorage.setItem('loyalty_fallback_wallet', JSON.stringify(wallet));
       upsertLocalBusinessCustomer(wallet);
     } catch (error) {
-      console.warn('No se pudo guardar Wallet local', error);
+      console.warn('No se pudo guardar perfil local', error);
     }
 
     return wallet;
@@ -386,7 +396,7 @@
     setText('[data-register-business]', business.business_name || 'Loyalty');
     setText('[data-register-type]', business.business_type || 'Clientes mas cerca');
     setText('[data-program-summary]', programSummary(program, reward));
-    setText('[data-register-state]', 'Tu Wallet para ' + (business.business_name || 'este negocio') + '.');
+    setText('[data-register-state]', 'Tu perfil para ' + (business.business_name || 'este negocio') + '.');
   }
 
   function showStep(step) {

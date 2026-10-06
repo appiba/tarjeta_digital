@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0f172a">
   <title>Loyalty</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="assets/css/main.css?v=wallet-v21">
+  <link rel="stylesheet" href="assets/css/main.css?v=simple-mvp-v1">
 </head>
 <body class="home-showcase" data-root="">
   <main class="showcase">
@@ -21,7 +21,7 @@
 
       <ul class="showcase-rail__list">
         <li><i data-lucide="badge"></i><span>Tarjetas digitales</span></li>
-        <li><i data-lucide="users"></i><span>Puntos, sellos o visitas</span></li>
+        <li><i data-lucide="users"></i><span>Pasadas y niveles</span></li>
         <li><i data-lucide="badge-percent"></i><span>Promociones</span></li>
         <li><i data-lucide="store"></i><span>Panel para negocios</span></li>
         <li><i data-lucide="shield-check"></i><span>Control administrador</span></li>
@@ -56,10 +56,10 @@
                 <p>Mas cerca de tus clientes</p>
               </div>
               <div class="phone-card phone-card--floating">
-                <div><i data-lucide="badge-check"></i><span>Acumula sellos</span></div>
+                <div><i data-lucide="badge-check"></i><span>Acumula pasadas</span></div>
                 <div><i data-lucide="gift"></i><span>Obten premios</span></div>
                 <div><i data-lucide="megaphone"></i><span>Promociones exclusivas</span></div>
-                <a class="mock-button" href="solicitud.html">Crear mi tarjeta</a>
+                <a class="mock-button" href="solicitud.html">Crear mi codigo</a>
               </div>
             </div>
           </article>
@@ -68,7 +68,7 @@
             <div class="phone-demo__screen">
               <div class="phone-title"><i data-lucide="crown"></i><span>Tarjeta de lealtad</span></div>
               <h2>Hola, cliente</h2>
-              <p>0 de 10 sellos</p>
+              <p>0 de 10 pasadas</p>
               <div class="bean-line" aria-hidden="true">
                 <span></span><span></span><span></span><span></span><span></span>
                 <span></span><span></span><span></span><span></span><span></span>
@@ -128,7 +128,7 @@
               <p>Meta completada. Listo para canjear.</p>
               <div class="reward-photo" aria-hidden="true"></div>
               <strong>Beneficio del negocio</strong>
-              <a class="mock-button" href="client/index.html">Ver mi tarjeta</a>
+              <a class="mock-button" href="client/index.html">Ver mi codigo</a>
             </div>
           </article>
         </div>
@@ -155,7 +155,7 @@
           <div class="business-composition">
             <div class="laptop-demo">
               <div class="laptop-demo__screen">
-                <aside><strong>Loyalty</strong><span>Inicio</span><span>Mi tarjeta</span><span>Clientes</span><span>Promociones</span><span>Transacciones</span></aside>
+                <aside><strong>Loyalty</strong><span>Inicio</span><span>Escanear</span><span>Promociones</span><span>Clientes</span><span>Configuracion</span></aside>
                 <section>
                   <div class="dashboard-head"><strong>Dashboard</strong><span>Este mes</span></div>
                   <div class="metric-grid"><b>0</b><b>0</b><b>0</b><b>0</b></div>
@@ -175,10 +175,10 @@
               <div class="phone-demo__screen phone-demo__screen--light">
                 <div class="phone-heading">Ficha cliente</div>
                 <div class="avatar-demo avatar-demo--small"></div>
-                <div class="mini-score"><strong>0</strong><strong>0</strong><strong>0</strong></div>
-                <span class="mock-button">+1 Sello</span>
-                <span class="mock-button mock-button--soft">+1 Visita</span>
-                <span class="mock-button mock-button--gold">Canjear premio</span>
+                <div class="mini-score"><strong>Pasadas</strong><strong>Nivel</strong><strong>Promo</strong></div>
+                <span class="mock-button">Confirmar pasada</span>
+                <span class="mock-button mock-button--soft">Nivel actualizado</span>
+                <span class="mock-button mock-button--gold">Promocion disponible</span>
               </div>
             </div>
           </div>
@@ -212,7 +212,7 @@
   </main>
 
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script src="assets/js/utils.js?v=wallet-v21"></script>
+  <script src="assets/js/utils.js?v=simple-mvp-v1"></script>
   <script>AppUtils.mountIcons();</script>
 </body>
 </html>

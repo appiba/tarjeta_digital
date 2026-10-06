@@ -152,6 +152,9 @@ function approveBusinessRequest_(context, data) {
     var temporaryPassword = hasOwnerPassword ? '' : generateTemporaryPassword_();
     var ownerPasswordHash = hasOwnerPassword ? request.owner_password_hash : createPasswordHash_(temporaryPassword);
     var timestamp = nowIso_();
+    var planType = normalizePlanType_(data.plan_type || 'FREE');
+    var planStart = todayIso_();
+    var planEnd = calculatePlanEnd_(planStart, planType);
 
     appendObject_('BUSINESSES', {
       business_id: businessId,
@@ -169,10 +172,14 @@ function approveBusinessRequest_(context, data) {
       address: request.address || '',
       business_type: request.business_type || '',
       status: 'active',
-      plan: 'starter',
+      plan: planType,
+      plan_type: planType,
+      plan_start: planStart,
+      plan_end: planEnd,
+      plan_status: planType === 'FREE' ? 'trial' : 'active',
       billing_cycle: 'monthly',
       billing_status: 'current',
-      next_payment_date: nextPaymentDateForCycle_('monthly'),
+      next_payment_date: planEnd,
       suspended_reason: '',
       suspended_at: '',
       reactivated_at: '',
@@ -372,6 +379,7 @@ function suspendBusinessForPayment_(context, data) {
 
   updateRowByNumber_('BUSINESSES', business._rowNumber, {
     status: 'suspended',
+    plan_status: 'suspended',
     billing_status: 'overdue',
     suspended_reason: reason,
     suspended_at: timestamp
@@ -407,6 +415,7 @@ function reactivateBusiness_(context, data) {
 
   updateRowByNumber_('BUSINESSES', business._rowNumber, {
     status: 'active',
+    plan_status: 'active',
     billing_cycle: cycle,
     billing_status: 'current',
     next_payment_date: nextPaymentDate,
@@ -534,7 +543,7 @@ function getAdminStats_(context) {
   var businesses = getAllRows_('BUSINESSES');
   var requests = getAllRows_('REQUESTS');
   var customers = getAllRows_('CUSTOMERS');
-  var transactions = getAllRows_('TRANSACTIONS');
+  var passes = getAllRows_('PASSES');
   var redemptions = getAllRows_('REDEMPTIONS');
 
   return {
@@ -542,7 +551,7 @@ function getAdminStats_(context) {
     pending_requests: requests.filter(function(row) { return row.status === 'pending'; }).length,
     suspended_businesses: businesses.filter(function(row) { return row.status === 'suspended'; }).length,
     total_customers: customers.length,
-    total_transactions: transactions.length,
+    total_transactions: passes.length,
     redeemed_rewards: redemptions.filter(function(row) { return row.status === 'redeemed'; }).length
   };
 }
@@ -606,13 +615,13 @@ function buildApprovalMessage_(request, business, temporaryPassword, hasOwnerPas
     'Codigo del negocio: ' + business.business_code,
     '',
     'Link para clientes: ' + (customerRegisterUrl || 'pendiente de configurar'),
-    'Comparte ese link para que tus clientes creen su Wallet o agreguen tu tarjeta a su Wallet existente.'
+    'Comparte ese link para que tus clientes creen su codigo unico Loyalty.'
   ].join('\n');
 }
 
 function buildCustomerShareMessage_(business, customerRegisterUrl) {
   return [
-    'Hola, ya puedes agregar ' + business.business_name + ' a tu Wallet Loyalty.',
+    'Hola, ya puedes crear tu codigo unico Loyalty para usarlo en ' + business.business_name + '.',
     customerRegisterUrl || ''
   ].join('\n').trim();
 }
@@ -628,7 +637,7 @@ function buildPaymentReminderMessage_(business) {
     'Te recordamos que esta pendiente cancelar el pago ' + cycleLabel + ' de tu plataforma Loyalty.',
     'Fecha de pago: ' + dueDate + '.',
     '',
-    'Para evitar la suspension del panel y de las tarjetas de clientes, por favor confirma el pago con el administrador.',
+    'Para evitar la suspension del panel y del registro de pasadas, por favor confirma el pago con el administrador.',
     'Gracias.'
   ].join('\n');
 }
@@ -643,7 +652,7 @@ function buildPaymentSuspensionMessage_(business) {
     'Tu cuenta de Loyalty fue suspendida temporalmente por pago ' + cycleLabel + ' pendiente.',
     'Motivo: ' + (business.suspended_reason || 'Pago pendiente') + '.',
     '',
-    'Cuando canceles el valor pendiente, el administrador reactivara tu panel y tus tarjetas.'
+    'Cuando canceles el valor pendiente, el administrador reactivara tu panel y el registro de pasadas.'
   ].join('\n');
 }
 
@@ -743,7 +752,7 @@ function sendApprovalEmail_(request, business, temporaryPassword, hasOwnerPasswo
         '<strong>' + passwordHtml + '<br>' +
         '<strong>Codigo del negocio:</strong> ' + emailHtml_(business.business_code) + '</p>' +
         '<p><strong>Link para clientes:</strong><br><a href="' + emailHtml_(customerRegisterUrl) + '">' + emailHtml_(customerRegisterUrl) + '</a></p>' +
-        '<p>Comparte ese link para que tus clientes creen su Wallet o agreguen tu tarjeta a su Wallet existente.</p>'
+        '<p>Comparte ese link para que tus clientes creen su codigo unico Loyalty.</p>'
     });
 
     return {
@@ -811,6 +820,10 @@ function publicBusiness_(business) {
     business_type: business.business_type || '',
     status: business.status,
     plan: business.plan || '',
+    plan_type: business.plan_type || business.plan || 'FREE',
+    plan_start: business.plan_start || '',
+    plan_end: business.plan_end || business.next_payment_date || '',
+    plan_status: getBusinessPlanStatus_(business),
     billing_cycle: business.billing_cycle || 'monthly',
     billing_status: business.billing_status || 'current',
     next_payment_date: business.next_payment_date || '',

@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Configuracion | Loyalty</title>
-  <link rel="stylesheet" href="../assets/css/main.css?v=wallet-v21">
-  <link rel="stylesheet" href="../assets/css/business.css?v=wallet-v21">
+  <link rel="stylesheet" href="../assets/css/main.css?v=simple-mvp-v1">
+  <link rel="stylesheet" href="../assets/css/business.css?v=simple-mvp-v1">
 </head>
 <body class="business-accent" data-root="../">
   <div class="app-shell">
@@ -13,11 +13,9 @@
       <a class="brand" href="../index.html"><span class="brand__mark">L</span><span>Loyalty</span></a>
       <nav aria-label="Negocio">
         <a href="index.html"><i data-lucide="layout-dashboard"></i>Inicio</a>
-        <a href="tarjeta.html"><i data-lucide="badge"></i>Mi tarjeta</a>
-        <a href="clientes.html"><i data-lucide="users"></i>Clientes</a>
-        <a href="promociones.html"><i data-lucide="megaphone"></i>Promociones</a>
         <a href="scanner.html"><i data-lucide="scan-line"></i>Escanear</a>
-        <a href="transacciones.html"><i data-lucide="receipt-text"></i>Transacciones</a>
+        <a href="promociones.html"><i data-lucide="megaphone"></i>Promociones</a>
+        <a href="clientes.html"><i data-lucide="users"></i>Clientes</a>
         <a class="is-active" href="configuracion.html"><i data-lucide="settings"></i>Configuracion</a>
         <button type="button" data-logout><i data-lucide="log-out"></i>Cerrar sesion</button>
       </nav>
@@ -27,7 +25,7 @@
         <div>
           <span class="badge" data-page-label>Configuracion</span>
           <h1>Configuracion del negocio</h1>
-          <p>Nombre, contacto, colores y logo.</p>
+          <p>Datos basicos del local y estado del servicio.</p>
         </div>
         <div class="user-chip"><span data-user-name>Usuario</span></div>
       </section>
@@ -41,16 +39,16 @@
           </div>
         </article>
         <article class="panel-card">
-          <h2>Diseno de tarjeta</h2>
+          <h2>Perfil del cliente</h2>
           <div class="settings-list">
-            <div><span>Logo</span><strong>Configurable</strong></div>
-            <div><span>Imagen portada</span><strong>Pendiente</strong></div>
-            <div><span>Colores</span><strong>Aplicados</strong></div>
+            <div><span>Codigo</span><strong>Unico por cliente</strong></div>
+            <div><span>QR</span><strong>LOY solamente</strong></div>
+            <div><span>Nivel</span><strong>General</strong></div>
           </div>
         </article>
         <article class="panel-card">
-          <h2>Programa de lealtad</h2>
-          <p>La meta, tipo de programa y recompensa inicial se crean al aprobar el negocio.</p>
+          <h2>Programa</h2>
+          <p>Cada confirmacion del scanner suma una pasada. Cada 10 pasadas el cliente sube un nivel.</p>
         </article>
         <article class="panel-card">
           <h2>Seguridad</h2>
@@ -60,10 +58,10 @@
     </main>
   </div>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script src="../assets/js/utils.js?v=wallet-v21"></script>
-  <script src="../assets/js/api.js?v=wallet-v21"></script>
-  <script src="../assets/js/auth.js?v=wallet-v21"></script>
-  <script src="../assets/js/business.js?v=wallet-v21"></script>
+  <script src="../assets/js/utils.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/api.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/auth.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/business.js?v=simple-mvp-v1"></script>
   <script>BusinessApp.init('Configuracion', ['business_owner']);</script>
 </body>
 </html>

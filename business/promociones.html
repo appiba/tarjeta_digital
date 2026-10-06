@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Promociones | Loyalty</title>
-  <link rel="stylesheet" href="../assets/css/main.css?v=wallet-v21">
-  <link rel="stylesheet" href="../assets/css/business.css?v=wallet-v21">
+  <link rel="stylesheet" href="../assets/css/main.css?v=simple-mvp-v1">
+  <link rel="stylesheet" href="../assets/css/business.css?v=simple-mvp-v1">
 </head>
 <body class="business-accent" data-root="../">
   <div class="app-shell">
@@ -13,11 +13,9 @@
       <a class="brand" href="../index.html"><span class="brand__mark">L</span><span>Loyalty</span></a>
       <nav aria-label="Negocio">
         <a href="index.html"><i data-lucide="layout-dashboard"></i>Inicio</a>
-        <a href="tarjeta.html"><i data-lucide="badge"></i>Mi tarjeta</a>
-        <a href="clientes.html"><i data-lucide="users"></i>Clientes</a>
-        <a class="is-active" href="promociones.html"><i data-lucide="megaphone"></i>Promociones</a>
         <a href="scanner.html"><i data-lucide="scan-line"></i>Escanear</a>
-        <a href="transacciones.html"><i data-lucide="receipt-text"></i>Transacciones</a>
+        <a class="is-active" href="promociones.html"><i data-lucide="megaphone"></i>Promociones</a>
+        <a href="clientes.html"><i data-lucide="users"></i>Clientes</a>
         <a href="configuracion.html"><i data-lucide="settings"></i>Configuracion</a>
         <button type="button" data-logout><i data-lucide="log-out"></i>Cerrar sesion</button>
       </nav>
@@ -27,7 +25,7 @@
         <div>
           <span class="badge" data-page-label>Promociones</span>
           <h1>Promociones</h1>
-          <p>Campanas visibles para clientes del negocio.</p>
+          <p>Beneficios simples asociados al nivel general del cliente.</p>
         </div>
         <div class="user-chip"><span data-user-name>Usuario</span></div>
       </section>
@@ -35,25 +33,18 @@
         <div class="panel-heading">
           <div>
             <h2>Promociones</h2>
-            <p>Crea campanas, cupones sorpresa y promociones por fechas especiales.</p>
+            <p>Define que beneficio se muestra cuando el cliente llega a un nivel.</p>
           </div>
         </div>
         <form class="form" data-business-promotion-form>
           <div class="section-grid">
             <div class="field">
-              <label for="title">Titulo</label>
-              <input id="title" name="title" type="text" placeholder="2x1 por aniversario" required>
+              <label for="title">Nombre promocion</label>
+              <input id="title" name="title" type="text" placeholder="20% de descuento" required>
             </div>
             <div class="field">
-              <label for="promotion_type">Tipo</label>
-              <select id="promotion_type" name="promotion_type">
-                <option value="standard">Promocion normal</option>
-                <option value="surprise">Cupon sorpresa</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="coupon_label">Nombre del cupon</label>
-              <input id="coupon_label" name="coupon_label" type="text" placeholder="Cupon sorpresa de cumpleanos">
+              <label for="level_required">Nivel requerido</label>
+              <input id="level_required" name="level_required" type="number" min="1" max="1001" value="1" required>
             </div>
             <div class="field">
               <label for="start_date">Se activa desde</label>
@@ -63,26 +54,29 @@
               <label for="end_date">Termina</label>
               <input id="end_date" name="end_date" type="date">
             </div>
-            <label class="check-row">
-              <input name="surprise_enabled" type="checkbox">
-              <span>Mostrar como sorpresa hasta estar activa</span>
-            </label>
+            <div class="field">
+              <label for="status">Estado</label>
+              <select id="status" name="status">
+                <option value="active">Activa</option>
+                <option value="disabled">Deshabilitada</option>
+              </select>
+            </div>
           </div>
           <div class="field">
             <label for="description">Descripcion</label>
-            <textarea id="description" name="description" rows="3" placeholder="Disponible para clientes con Wallet activa."></textarea>
+            <textarea id="description" name="description" rows="3" placeholder="Valido al presentar el codigo LOY en caja."></textarea>
           </div>
-          <button class="button button--primary" type="submit"><i data-lucide="calendar-plus"></i>Guardar promocion</button>
+          <button class="button button--primary" type="submit"><i data-lucide="save"></i>Guardar</button>
         </form>
       </section>
       <section class="client-list" data-business-promotions-list></section>
     </main>
   </div>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script src="../assets/js/utils.js?v=wallet-v21"></script>
-  <script src="../assets/js/api.js?v=wallet-v21"></script>
-  <script src="../assets/js/auth.js?v=wallet-v21"></script>
-  <script src="../assets/js/business.js?v=wallet-v21"></script>
+  <script src="../assets/js/utils.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/api.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/auth.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/business.js?v=simple-mvp-v1"></script>
   <script>BusinessApp.initPromotions();</script>
 </body>
 </html>

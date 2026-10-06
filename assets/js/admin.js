@@ -345,11 +345,11 @@
 
     return '<article class="request-card">' +
       '<div class="request-card__main">' +
-        '<div><span class="badge">Wallet</span><h2>' + escapeHtml(customer.full_name || 'Cliente') + '</h2><p>' + escapeHtml(customer.phone || '') + '</p></div>' +
-        '<strong>' + escapeHtml((item.card_count || 0) + ' tarjetas') + '</strong>' +
+        '<div><span class="badge">Cliente</span><h2>' + escapeHtml(customer.full_name || 'Cliente') + '</h2><p>' + escapeHtml(customer.phone || '') + '</p></div>' +
+        '<strong>' + escapeHtml((customer.total_passes || 0) + ' pasadas') + '</strong>' +
       '</div>' +
       '<dl class="request-card__details">' +
-        '<div><dt>Wallet</dt><dd>' + escapeHtml(customer.wallet_id || '') + '</dd></div>' +
+        '<div><dt>Codigo</dt><dd>' + escapeHtml(customer.customer_code || customer.wallet_id || '') + '</dd></div>' +
         '<div><dt>Correo</dt><dd>' + escapeHtml(customer.email || 'Sin correo') + '</dd></div>' +
         '<div><dt>Negocios</dt><dd>' + escapeHtml(names || 'Sin negocios') + '</dd></div>' +
         '<div><dt>Estado</dt><dd>' + escapeHtml(customer.status || '') + '</dd></div>' +
@@ -358,7 +358,8 @@
   }
 
   function renderBusinessCard(business) {
-    var isSuspended = business.status === 'suspended';
+    var planStatus = business.plan_status || business.billing_status || 'active';
+    var isSuspended = business.status === 'suspended' || planStatus === 'suspended';
     var whatsappButton = business.payment_whatsapp_url ?
       '<a class="button button--primary" href="' + escapeAttr(business.payment_whatsapp_url) + '" target="_blank" rel="noopener"><i data-lucide="message-circle"></i>WSS cobro</a>' :
       '<button class="button button--ghost" type="button" disabled><i data-lucide="message-circle"></i>Sin WhatsApp</button>';
@@ -375,15 +376,15 @@
         '<div><dt>Correo</dt><dd>' + escapeHtml(business.email) + '</dd></div>' +
         '<div><dt>WhatsApp</dt><dd>' + escapeHtml(business.whatsapp) + '</dd></div>' +
         '<div><dt>Ciudad</dt><dd>' + escapeHtml(business.city) + '</dd></div>' +
-        '<div><dt>Plan</dt><dd>' + escapeHtml(business.plan) + '</dd></div>' +
-        '<div><dt>Cobro</dt><dd>' + escapeHtml(billingCycleLabel(business.billing_cycle)) + '</dd></div>' +
-        '<div><dt>Estado pago</dt><dd>' + escapeHtml(billingStatusLabel(business.billing_status)) + '</dd></div>' +
-        '<div><dt>Proximo pago</dt><dd>' + escapeHtml(formatPaymentDate(business.next_payment_date)) + '</dd></div>' +
+        '<div><dt>Plan</dt><dd>' + escapeHtml(planTypeLabel(business.plan_type || business.plan)) + '</dd></div>' +
+        '<div><dt>Inicio</dt><dd>' + escapeHtml(formatPaymentDate(business.plan_start)) + '</dd></div>' +
+        '<div><dt>Vence</dt><dd>' + escapeHtml(formatPaymentDate(business.plan_end || business.next_payment_date)) + '</dd></div>' +
+        '<div><dt>Estado plan</dt><dd>' + escapeHtml(planStatusLabel(planStatus)) + '</dd></div>' +
         (business.suspended_reason ? '<div><dt>Motivo suspension</dt><dd>' + escapeHtml(business.suspended_reason) + '</dd></div>' : '') +
       '</dl>' +
       '<div class="request-card__actions">' +
         whatsappButton +
-        '<button class="button button--ghost" type="button" data-configure-billing="' + escapeAttr(business.business_id) + '" data-billing-cycle="' + escapeAttr(business.billing_cycle || 'monthly') + '" data-next-payment="' + escapeAttr(business.next_payment_date || '') + '"><i data-lucide="calendar-clock"></i>Configurar pago</button>' +
+        '<button class="button button--ghost" type="button" data-configure-billing="' + escapeAttr(business.business_id) + '" data-plan-type="' + escapeAttr(business.plan_type || business.plan || '1_MONTH') + '" data-next-payment="' + escapeAttr(business.plan_end || business.next_payment_date || '') + '"><i data-lucide="calendar-clock"></i>Renovar</button>' +
         paymentAction +
         '<button class="button button--ghost" type="button" data-reset-owner-password="' + escapeAttr(business.business_id) + '"><i data-lucide="key-round"></i>Restablecer clave</button>' +
       '</div>' +
@@ -417,35 +418,44 @@
   }
 
   async function configureBusinessBilling(businessId, button) {
-    var rawCycle = window.prompt('Tipo de cobro: mensual o anual', button.dataset.billingCycle === 'yearly' ? 'anual' : 'mensual');
+    var rawPlan = window.prompt('Plan: FREE, 1_MONTH, 3_MONTHS, 6_MONTHS o 1_YEAR', button.dataset.planType || '1_MONTH');
 
-    if (!rawCycle) {
+    if (!rawPlan) {
       return;
     }
 
-    var cycle = normalizeBillingCycle(rawCycle);
-    var nextPayment = window.prompt('Proximo pago en formato YYYY-MM-DD', button.dataset.nextPayment || '');
+    var planType = normalizePlanType(rawPlan);
 
-    if (nextPayment === null) {
+    if (!planType) {
+      AppUtils.toast('Plan no valido.', 'error');
       return;
     }
 
     AppUtils.setButtonLoading(button, true, 'Guardando...');
 
     try {
-      var result = await AppAPI.apiRequest('setBusinessBilling', {
+      var result = await AppAPI.apiRequest('renewBusinessPlan', {
         business_id: businessId,
-        billing_cycle: cycle,
-        billing_status: 'current',
-        next_payment_date: nextPayment
+        plan_type: planType
       });
 
       if (!result.success) {
-        throw new Error(result.message || 'No se pudo configurar el pago.');
+        if (isNotImplemented(result, 'renewBusinessPlan')) {
+          result = await AppAPI.apiRequest('setBusinessBilling', {
+            business_id: businessId,
+            billing_cycle: planType === '1_YEAR' ? 'yearly' : 'monthly',
+            billing_status: 'current',
+            next_payment_date: button.dataset.nextPayment || ''
+          });
+        }
       }
 
-      showAdminMessageResult('Cobro configurado', result.data.whatsapp_message, result.data.whatsapp_url);
-      AppUtils.toast('Cobro actualizado.', 'success');
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudo renovar.');
+      }
+
+      showAdminMessageResult('Plan renovado', result.data.whatsapp_message || 'Plan ' + planType + ' activado.', result.data.whatsapp_url);
+      AppUtils.toast('Plan actualizado.', 'success');
       await initBusinesses();
     } catch (error) {
       AppUtils.toast(error.message, 'error');
@@ -612,6 +622,63 @@
     }
 
     return 'Al dia';
+  }
+
+  function normalizePlanType(value) {
+    var text = String(value || '').trim().toUpperCase();
+    return ['FREE', '1_MONTH', '3_MONTHS', '6_MONTHS', '1_YEAR'].indexOf(text) === -1 ? '' : text;
+  }
+
+  function planTypeLabel(value) {
+    var text = String(value || 'FREE').toUpperCase();
+
+    if (text === 'FREE') {
+      return 'Gratis';
+    }
+
+    if (text === '1_MONTH') {
+      return '1 mes';
+    }
+
+    if (text === '3_MONTHS') {
+      return '3 meses';
+    }
+
+    if (text === '6_MONTHS') {
+      return '6 meses';
+    }
+
+    if (text === '1_YEAR') {
+      return '1 año';
+    }
+
+    return text;
+  }
+
+  function planStatusLabel(value) {
+    var text = String(value || '').toLowerCase();
+
+    if (text === 'trial') {
+      return 'Prueba gratis';
+    }
+
+    if (text === 'expired') {
+      return 'Vencido';
+    }
+
+    if (text === 'suspended') {
+      return 'Suspendido';
+    }
+
+    return 'Activo';
+  }
+
+  function isNotImplemented(result, action) {
+    var message = String(result && result.message || '').toLowerCase();
+    var error = String(result && result.error || '').toLowerCase();
+    var actionName = String(action || '').toLowerCase();
+
+    return error === 'not_implemented' || (message.indexOf('accion no implementada') !== -1 && message.indexOf(actionName) !== -1);
   }
 
   function formatPaymentDate(value) {

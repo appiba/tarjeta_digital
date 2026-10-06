@@ -1,10 +1,4 @@
-// Loyalty Apps Script complete backend
-// Paste this entire file into Google Apps Script if you prefer one file instead of multiple .gs files.
-// Then configure Script Properties and run setupSystem(), then createSuperAdmin().
-
-// ==================================================
 // Code.gs
-// ==================================================
 function doGet(e) {
   return handleHttpRequest_(e, 'GET');
 }
@@ -91,6 +85,10 @@ function routeAction_(request) {
       return verifyCustomerOtp_(request.data);
     case 'registerCustomer':
       return registerCustomer_(request.data);
+    case 'simpleCustomerAccess':
+      return simpleCustomerAccess_(request.data);
+    case 'getSimpleCustomerProfile':
+      return getSimpleCustomerProfile_(request.data);
     case 'getPublicCard':
       return getPublicCard_(request.data);
     case 'getAdminStats':
@@ -117,6 +115,25 @@ function routeAction_(request) {
       return listAdminCustomers_(requireSession_(request.token, ['super_admin']), request.data);
     case 'analyzeCustomerDuplicates':
       return analyzeCustomerDuplicates_(requireSession_(request.token, ['super_admin']), request.data);
+    case 'renewBusinessPlan':
+      return renewBusinessPlan_(requireSession_(request.token, ['super_admin']), request.data);
+    case 'migrateToSimpleModel':
+      requireSession_(request.token, ['super_admin']);
+      return migrateToSimpleModel_();
+    case 'getSimpleBusinessHome':
+      return getSimpleBusinessHome_(requireSession_(request.token, ['business_owner', 'staff']));
+    case 'listSimpleBusinessCustomers':
+      return listSimpleBusinessCustomers_(requireSession_(request.token, ['business_owner', 'staff']));
+    case 'listSimpleCoupons':
+      return listSimpleCoupons_(requireSession_(request.token, ['business_owner', 'staff']));
+    case 'saveSimpleCoupon':
+      return saveSimpleCoupon_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
+    case 'scanSimpleCustomer':
+      return scanSimpleCustomer_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
+    case 'registerSimplePass':
+      return registerSimplePass_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
+    case 'redeemSimpleCoupon':
+      return redeemSimpleCoupon_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
     case 'getBusinessHome':
       return getBusinessHome_(requireSession_(request.token, ['business_owner', 'staff']));
     case 'listBusinessCustomers':
@@ -156,9 +173,8 @@ function jsonResponse_(payload) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// ==================================================
+
 // Security.gs
-// ==================================================
 function appError_(message, code) {
   var error = new Error(message);
   error.code = code || 'bad_request';
@@ -262,9 +278,8 @@ function constantTimeEquals_(left, right) {
   return difference === 0;
 }
 
-// ==================================================
+
 // Utils.gs
-// ==================================================
 var SHEET_SCHEMAS = Object.freeze({
   CONFIG: ['key', 'value', 'description'],
   BUSINESSES: [
@@ -284,6 +299,10 @@ var SHEET_SCHEMAS = Object.freeze({
     'business_type',
     'status',
     'plan',
+    'plan_type',
+    'plan_start',
+    'plan_end',
+    'plan_status',
     'billing_cycle',
     'billing_status',
     'next_payment_date',
@@ -307,10 +326,13 @@ var SHEET_SCHEMAS = Object.freeze({
   ],
   CUSTOMERS: [
     'customer_id',
+    'customer_code',
     'wallet_id',
     'full_name',
     'phone',
     'phone_normalized',
+    'total_passes',
+    'current_level',
     'email',
     'birthday',
     'avatar_url',
@@ -348,6 +370,17 @@ var SHEET_SCHEMAS = Object.freeze({
     'trigger_count',
     'created_at',
     'redeemed_at'
+  ],
+  PASSES: [
+    'pass_id',
+    'customer_id',
+    'business_id',
+    'user_id',
+    'previous_passes',
+    'new_passes',
+    'previous_level',
+    'new_level',
+    'created_at'
   ],
   LOYALTY_PROGRAMS: [
     'program_id',
@@ -398,6 +431,8 @@ var SHEET_SCHEMAS = Object.freeze({
     'redemption_id',
     'business_id',
     'customer_id',
+    'coupon_id',
+    'user_id',
     'card_id',
     'reward_id',
     'staff_user_id',
@@ -415,6 +450,17 @@ var SHEET_SCHEMAS = Object.freeze({
     'visibility_status',
     'surprise_enabled',
     'coupon_label',
+    'start_date',
+    'end_date',
+    'status',
+    'created_at'
+  ],
+  COUPONS: [
+    'coupon_id',
+    'business_id',
+    'title',
+    'description',
+    'level_required',
     'start_date',
     'end_date',
     'status',
@@ -863,9 +909,8 @@ function logServerError_(error) {
   console.error(error && error.stack ? error.stack : error);
 }
 
-// ==================================================
+
 // Auth.gs
-// ==================================================
 function createSuperAdmin(name, email, password) {
   var properties = PropertiesService.getScriptProperties();
   var adminName = sanitizeText_(name || properties.getProperty('INITIAL_ADMIN_NAME') || 'Administrador General', 120);
@@ -1052,9 +1097,8 @@ function publicSession_(session) {
   };
 }
 
-// ==================================================
+
 // Businesses.gs
-// ==================================================
 function assertBusinessAccess_(context, businessId) {
   if (context.user.role === 'super_admin') {
     return true;
@@ -1209,6 +1253,9 @@ function approveBusinessRequest_(context, data) {
     var temporaryPassword = hasOwnerPassword ? '' : generateTemporaryPassword_();
     var ownerPasswordHash = hasOwnerPassword ? request.owner_password_hash : createPasswordHash_(temporaryPassword);
     var timestamp = nowIso_();
+    var planType = normalizePlanType_(data.plan_type || 'FREE');
+    var planStart = todayIso_();
+    var planEnd = calculatePlanEnd_(planStart, planType);
 
     appendObject_('BUSINESSES', {
       business_id: businessId,
@@ -1226,10 +1273,14 @@ function approveBusinessRequest_(context, data) {
       address: request.address || '',
       business_type: request.business_type || '',
       status: 'active',
-      plan: 'starter',
+      plan: planType,
+      plan_type: planType,
+      plan_start: planStart,
+      plan_end: planEnd,
+      plan_status: planType === 'FREE' ? 'trial' : 'active',
       billing_cycle: 'monthly',
       billing_status: 'current',
-      next_payment_date: nextPaymentDateForCycle_('monthly'),
+      next_payment_date: planEnd,
       suspended_reason: '',
       suspended_at: '',
       reactivated_at: '',
@@ -1429,6 +1480,7 @@ function suspendBusinessForPayment_(context, data) {
 
   updateRowByNumber_('BUSINESSES', business._rowNumber, {
     status: 'suspended',
+    plan_status: 'suspended',
     billing_status: 'overdue',
     suspended_reason: reason,
     suspended_at: timestamp
@@ -1464,6 +1516,7 @@ function reactivateBusiness_(context, data) {
 
   updateRowByNumber_('BUSINESSES', business._rowNumber, {
     status: 'active',
+    plan_status: 'active',
     billing_cycle: cycle,
     billing_status: 'current',
     next_payment_date: nextPaymentDate,
@@ -1591,7 +1644,7 @@ function getAdminStats_(context) {
   var businesses = getAllRows_('BUSINESSES');
   var requests = getAllRows_('REQUESTS');
   var customers = getAllRows_('CUSTOMERS');
-  var transactions = getAllRows_('TRANSACTIONS');
+  var passes = getAllRows_('PASSES');
   var redemptions = getAllRows_('REDEMPTIONS');
 
   return {
@@ -1599,7 +1652,7 @@ function getAdminStats_(context) {
     pending_requests: requests.filter(function(row) { return row.status === 'pending'; }).length,
     suspended_businesses: businesses.filter(function(row) { return row.status === 'suspended'; }).length,
     total_customers: customers.length,
-    total_transactions: transactions.length,
+    total_transactions: passes.length,
     redeemed_rewards: redemptions.filter(function(row) { return row.status === 'redeemed'; }).length
   };
 }
@@ -1663,13 +1716,13 @@ function buildApprovalMessage_(request, business, temporaryPassword, hasOwnerPas
     'Codigo del negocio: ' + business.business_code,
     '',
     'Link para clientes: ' + (customerRegisterUrl || 'pendiente de configurar'),
-    'Comparte ese link para que tus clientes creen su Wallet o agreguen tu tarjeta a su Wallet existente.'
+    'Comparte ese link para que tus clientes creen su codigo unico Loyalty.'
   ].join('\n');
 }
 
 function buildCustomerShareMessage_(business, customerRegisterUrl) {
   return [
-    'Hola, ya puedes agregar ' + business.business_name + ' a tu Wallet Loyalty.',
+    'Hola, ya puedes crear tu codigo unico Loyalty para usarlo en ' + business.business_name + '.',
     customerRegisterUrl || ''
   ].join('\n').trim();
 }
@@ -1685,7 +1738,7 @@ function buildPaymentReminderMessage_(business) {
     'Te recordamos que esta pendiente cancelar el pago ' + cycleLabel + ' de tu plataforma Loyalty.',
     'Fecha de pago: ' + dueDate + '.',
     '',
-    'Para evitar la suspension del panel y de las tarjetas de clientes, por favor confirma el pago con el administrador.',
+    'Para evitar la suspension del panel y del registro de pasadas, por favor confirma el pago con el administrador.',
     'Gracias.'
   ].join('\n');
 }
@@ -1700,7 +1753,7 @@ function buildPaymentSuspensionMessage_(business) {
     'Tu cuenta de Loyalty fue suspendida temporalmente por pago ' + cycleLabel + ' pendiente.',
     'Motivo: ' + (business.suspended_reason || 'Pago pendiente') + '.',
     '',
-    'Cuando canceles el valor pendiente, el administrador reactivara tu panel y tus tarjetas.'
+    'Cuando canceles el valor pendiente, el administrador reactivara tu panel y el registro de pasadas.'
   ].join('\n');
 }
 
@@ -1800,7 +1853,7 @@ function sendApprovalEmail_(request, business, temporaryPassword, hasOwnerPasswo
         '<strong>' + passwordHtml + '<br>' +
         '<strong>Codigo del negocio:</strong> ' + emailHtml_(business.business_code) + '</p>' +
         '<p><strong>Link para clientes:</strong><br><a href="' + emailHtml_(customerRegisterUrl) + '">' + emailHtml_(customerRegisterUrl) + '</a></p>' +
-        '<p>Comparte ese link para que tus clientes creen su Wallet o agreguen tu tarjeta a su Wallet existente.</p>'
+        '<p>Comparte ese link para que tus clientes creen su codigo unico Loyalty.</p>'
     });
 
     return {
@@ -1868,6 +1921,10 @@ function publicBusiness_(business) {
     business_type: business.business_type || '',
     status: business.status,
     plan: business.plan || '',
+    plan_type: business.plan_type || business.plan || 'FREE',
+    plan_start: business.plan_start || '',
+    plan_end: business.plan_end || business.next_payment_date || '',
+    plan_status: getBusinessPlanStatus_(business),
     billing_cycle: business.billing_cycle || 'monthly',
     billing_status: business.billing_status || 'current',
     next_payment_date: business.next_payment_date || '',
@@ -1881,12 +1938,11 @@ function publicBusiness_(business) {
   };
 }
 
-// ==================================================
+
 // Customers.gs
-// ==================================================
 function ensureWalletSchema_() {
   var spreadsheet = getSpreadsheet_();
-  ['CUSTOMERS', 'CUSTOMER_CARDS', 'CUSTOMER_COUPONS', 'CUSTOMER_SESSIONS', 'LOYALTY_PROGRAMS', 'TRANSACTIONS', 'REDEMPTIONS', 'PROMOTIONS'].forEach(function(sheetName) {
+  ['CUSTOMERS', 'PASSES', 'COUPONS', 'CUSTOMER_CARDS', 'CUSTOMER_COUPONS', 'CUSTOMER_SESSIONS', 'LOYALTY_PROGRAMS', 'TRANSACTIONS', 'REDEMPTIONS', 'PROMOTIONS'].forEach(function(sheetName) {
     ensureSheet_(spreadsheet, sheetName, SHEET_SCHEMAS[sheetName]);
   });
 }
@@ -1921,7 +1977,8 @@ function getCustomerByPhone_(phone) {
 function getCustomerByWalletId_(walletId) {
   ensureWalletSchema_();
 
-  var customer = findRowByValue_('CUSTOMERS', 'wallet_id', String(walletId || '').trim().toUpperCase());
+  var code = String(walletId || '').trim().toUpperCase();
+  var customer = findRowByValue_('CUSTOMERS', 'customer_code', code) || findRowByValue_('CUSTOMERS', 'wallet_id', code);
   return customer ? ensureCustomerWalletFields_(customer) : null;
 }
 
@@ -1938,14 +1995,18 @@ function createCustomer_(data) {
   var timestamp = nowIso_();
   var phoneNormalized = normalizeCustomerPhone_(data.phone);
   var customerId = generateId_('CUS');
-  var walletId = generateUniqueWalletId_();
+  var customerCode = generateUniqueCustomerCode_();
+  var walletId = customerCode;
 
   appendObject_('CUSTOMERS', {
     customer_id: customerId,
+    customer_code: customerCode,
     wallet_id: walletId,
     full_name: sanitizeText_(data.full_name || data.name || 'Cliente Loyalty', 140),
     phone: phoneNormalized,
     phone_normalized: phoneNormalized,
+    total_passes: 0,
+    current_level: 1,
     email: normalizeEmail_(data.email || ''),
     birthday: sanitizeText_(data.birthday || '', 40),
     avatar_url: sanitizeText_(data.avatar_url || '', 500),
@@ -2014,7 +2075,15 @@ function ensureCustomerWalletFields_(customer) {
   var updates = {};
 
   if (!customer.wallet_id) {
-    updates.wallet_id = generateUniqueWalletId_();
+    updates.wallet_id = customer.customer_code || generateUniqueCustomerCode_();
+  }
+
+  if (!customer.customer_code) {
+    updates.customer_code = customer.wallet_id && String(customer.wallet_id).indexOf('LOY-') === 0 ? customer.wallet_id : generateUniqueCustomerCode_();
+  }
+
+  if (customer.wallet_id && customer.wallet_id !== (customer.customer_code || updates.customer_code)) {
+    updates.wallet_id = customer.customer_code || updates.customer_code;
   }
 
   if (!customer.phone_normalized && customer.phone) {
@@ -2027,6 +2096,14 @@ function ensureCustomerWalletFields_(customer) {
 
   if (!customer.updated_at) {
     updates.updated_at = customer.created_at || nowIso_();
+  }
+
+  if (customer.total_passes === '' || customer.total_passes === undefined || customer.total_passes === null) {
+    updates.total_passes = 0;
+  }
+
+  if (!customer.current_level) {
+    updates.current_level = calculateLevel_(parseInt(customer.total_passes || '0', 10) || 0);
   }
 
   if (!customer.status) {
@@ -2042,10 +2119,22 @@ function ensureCustomerWalletFields_(customer) {
 }
 
 function generateUniqueWalletId_() {
-  var walletId = generateId_('WALLET');
+  return generateUniqueCustomerCode_();
+}
 
-  while (findRowByValue_('CUSTOMERS', 'wallet_id', walletId)) {
-    walletId = generateId_('WALLET');
+function generateUniqueCustomerCode_() {
+  var alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var walletId = 'LOY-';
+
+  for (var index = 0; index < 6; index += 1) {
+    walletId += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+  }
+
+  while (findRowByValue_('CUSTOMERS', 'customer_code', walletId) || findRowByValue_('CUSTOMERS', 'wallet_id', walletId)) {
+    walletId = 'LOY-';
+    for (var retry = 0; retry < 6; retry += 1) {
+      walletId += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+    }
   }
 
   return walletId;
@@ -2127,10 +2216,13 @@ function getCustomerContext_(data) {
 function publicCustomer_(customer) {
   return {
     customer_id: customer.customer_id,
-    wallet_id: customer.wallet_id || '',
+    customer_code: customer.customer_code || customer.wallet_id || '',
+    wallet_id: customer.customer_code || customer.wallet_id || '',
     full_name: customer.full_name,
     phone: customer.phone || '',
     phone_normalized: customer.phone_normalized || customer.phone || '',
+    total_passes: parseInt(customer.total_passes || '0', 10) || 0,
+    current_level: parseInt(customer.current_level || '1', 10) || 1,
     email: customer.email || '',
     birthday: customer.birthday || '',
     avatar_url: customer.avatar_url || '',
@@ -2141,6 +2233,7 @@ function publicCustomer_(customer) {
 function publicCustomerSession_(session) {
   return {
     customer_id: session.customer_id,
+    customer_code: session.wallet_id,
     wallet_id: session.wallet_id,
     token: session.token,
     expires_at: session.expires_at
@@ -2167,9 +2260,8 @@ function registerCustomer_(data) {
   return registerOrAttachCustomer_(data);
 }
 
-// ==================================================
+
 // Cards.gs
-// ==================================================
 function getCustomerCardById_(cardId) {
   ensureWalletSchema_();
   return findRowByValue_('CUSTOMER_CARDS', 'card_id', cardId);
@@ -2359,9 +2451,8 @@ function getPublicCard_(data) {
   };
 }
 
-// ==================================================
+
 // Wallet.gs
-// ==================================================
 function lookupCustomerPhone_(data) {
   requireFields_(data, ['phone']);
 
@@ -2807,7 +2898,7 @@ function extractWalletId_(value) {
 
 function abbreviateWalletId_(walletId) {
   var value = String(walletId || '');
-  return value.length > 6 ? 'WALLET •••• ' + value.slice(-6) : value;
+  return value.length > 6 ? 'LOY •••• ' + value.slice(-6) : value;
 }
 
 function buildClientWalletUrl_(walletId) {
@@ -2817,7 +2908,7 @@ function buildClientWalletUrl_(walletId) {
     return '';
   }
 
-  return appUrl.replace(/\/?$/, '/') + 'client/?wallet=' + encodeURIComponent(walletId || '');
+  return appUrl.replace(/\/?$/, '/') + 'client/?code=' + encodeURIComponent(walletId || '');
 }
 
 function buildBusinessScannerWalletUrl_(walletId, cardId) {
@@ -2827,7 +2918,7 @@ function buildBusinessScannerWalletUrl_(walletId, cardId) {
     return String(walletId || '');
   }
 
-  var url = appUrl.replace(/\/?$/, '/') + 'business/scanner.html?wallet=' + encodeURIComponent(walletId || '');
+  var url = appUrl.replace(/\/?$/, '/') + 'business/scanner.html?code=' + encodeURIComponent(walletId || '');
 
   if (cardId) {
     url += '&card=' + encodeURIComponent(cardId);
@@ -2836,9 +2927,8 @@ function buildBusinessScannerWalletUrl_(walletId, cardId) {
   return url;
 }
 
-// ==================================================
+
 // Loyalty.gs
-// ==================================================
 function getActiveProgramForBusiness_(businessId) {
   var programs = findRowsByValue_('LOYALTY_PROGRAMS', 'business_id', businessId);
 
@@ -3390,9 +3480,8 @@ function applyBusinessCustomerAction_(context, data) {
   }
 }
 
-// ==================================================
+
 // Promotions.gs
-// ==================================================
 function isPromotionVisible_(promotion, now) {
   return getPromotionScheduleState_(promotion, now) === 'active';
 }
@@ -3522,9 +3611,8 @@ function normalizePromotionType_(value) {
   return 'standard';
 }
 
-// ==================================================
+
 // Uploads.gs
-// ==================================================
 function ensureDriveFolders_() {
   var properties = PropertiesService.getScriptProperties();
   var rootFolder = getExistingFolder_(properties.getProperty('DRIVE_FOLDER_ID'));
@@ -3567,4 +3655,580 @@ function ensureChildFolder_(parentFolder, name) {
   }
 
   return parentFolder.createFolder(name);
+}
+
+
+// Simple.gs
+function ensureSimpleModel_() {
+  var spreadsheet = getSpreadsheet_();
+  ['BUSINESSES', 'USERS', 'CUSTOMERS', 'PASSES', 'COUPONS', 'REDEMPTIONS', 'REQUESTS', 'SESSIONS', 'ACTIVITY_LOG', 'CUSTOMER_SESSIONS'].forEach(function(sheetName) {
+    ensureSheet_(spreadsheet, sheetName, SHEET_SCHEMAS[sheetName]);
+  });
+}
+
+function calculateLevel_(totalPasses) {
+  var total = Math.max(0, Math.min(10000, parseInt(totalPasses || '0', 10) || 0));
+  return Math.floor(total / 10) + 1;
+}
+
+function publicLevel_(totalPasses) {
+  var total = Math.max(0, Math.min(10000, parseInt(totalPasses || '0', 10) || 0));
+  var level = calculateLevel_(total);
+  var range = Math.floor(total / 100) + 1;
+  var currentLevelStart = Math.floor(total / 10) * 10;
+  var nextLevelAt = currentLevelStart + 10;
+  var progressInLevel = total - currentLevelStart;
+
+  return {
+    total_passes: total,
+    current_level: level,
+    global_level: level,
+    range: range,
+    current_level_start: currentLevelStart,
+    next_level_at: nextLevelAt,
+    progress_in_level: progressInLevel,
+    progress_percent: Math.min(100, Math.round((progressInLevel / 10) * 100)),
+    remaining_to_next_level: Math.max(0, nextLevelAt - total),
+    label: total + ' / ' + nextLevelAt + ' pasadas'
+  };
+}
+
+function getSimpleCustomerByCode_(code) {
+  ensureSimpleModel_();
+  var cleanCode = String(code || '').trim().toUpperCase();
+  if (!cleanCode) {
+    return null;
+  }
+  var customer = findRowByValue_('CUSTOMERS', 'customer_code', cleanCode) || findRowByValue_('CUSTOMERS', 'wallet_id', cleanCode);
+  return customer ? ensureCustomerWalletFields_(customer) : null;
+}
+
+function getOrCreateSimpleCustomer_(data) {
+  ensureSimpleModel_();
+  requireFields_(data, ['phone']);
+
+  var phoneNormalized = normalizeCustomerPhone_(data.phone);
+  var customer = findCustomerByPhone_(phoneNormalized);
+
+  if (customer) {
+    customer = updateCustomerProfile_(customer, {
+      full_name: data.full_name || data.name || customer.full_name,
+      phone: phoneNormalized,
+      email: data.email !== undefined ? data.email : customer.email,
+      birthday: data.birthday !== undefined ? data.birthday : customer.birthday
+    });
+    return customer;
+  }
+
+  return createCustomer_({
+    full_name: data.full_name || data.name || 'Cliente Loyalty',
+    phone: phoneNormalized,
+    email: data.email || '',
+    birthday: data.birthday || ''
+  });
+}
+
+function simpleCustomerAccess_(data) {
+  var customer = getOrCreateSimpleCustomer_(data);
+  var session = createCustomerSession_(customer);
+  var payload = buildSimpleCustomerPayload_(customer, null);
+
+  return {
+    customer: payload.customer,
+    customer_session: publicCustomerSession_(session),
+    level: payload.level,
+    customer_code: payload.customer.customer_code,
+    qr: buildSimpleCustomerQr_(payload.customer.customer_code),
+    promotions: payload.promotions,
+    history: payload.history,
+    client_url: buildClientWalletUrl_(payload.customer.customer_code)
+  };
+}
+
+function getSimpleCustomerProfile_(data) {
+  ensureSimpleModel_();
+  var customer = null;
+
+  if (data.customer_token || data.token) {
+    customer = getCustomerContext_(data).customer;
+  } else if (data.customer_code || data.code || data.wallet) {
+    customer = getSimpleCustomerByCode_(data.customer_code || data.code || data.wallet);
+  } else if (data.phone) {
+    customer = findCustomerByPhone_(data.phone);
+  }
+
+  if (!customer) {
+    throw appError_('Cliente no encontrado.', 'customer_not_found');
+  }
+
+  return buildSimpleCustomerPayload_(customer, data.business_id || '');
+}
+
+function buildSimpleCustomerPayload_(customer, businessId) {
+  customer = ensureCustomerWalletFields_(customer);
+  var level = publicLevel_(customer.total_passes || 0);
+  var promotions = businessId ? getAvailableSimpleCoupons_(businessId, level.current_level) : getAvailableSimpleCouponsForCustomer_(level.current_level);
+
+  return {
+    customer: publicCustomer_(customer),
+    level: level,
+    qr: buildSimpleCustomerQr_(customer.customer_code || customer.wallet_id),
+    promotions: promotions,
+    history: getSimplePassHistory_(customer.customer_id, 8)
+  };
+}
+
+function buildSimpleCustomerQr_(customerCode) {
+  var code = String(customerCode || '').trim().toUpperCase();
+  return {
+    customer_code: code,
+    payload: code,
+    display: code
+  };
+}
+
+function getSimpleBusinessHome_(context) {
+  ensureSimpleModel_();
+  var business = getBusinessById_(context.user.business_id);
+  assertSimpleBusinessCanOperate_(business, true);
+
+  var passes = findRowsByValue_('PASSES', 'business_id', business.business_id);
+  var seen = {};
+  passes.forEach(function(pass) {
+    seen[pass.customer_id] = true;
+  });
+  var coupons = getSimpleCouponsForBusiness_(business.business_id);
+
+  return {
+    business: publicBusiness_(business),
+    stats: {
+      customers: Object.keys(seen).length,
+      passes: passes.length,
+      promotions: coupons.filter(function(coupon) { return coupon.status === 'active'; }).length,
+      eligible_customers: countEligibleSimpleCustomers_(business.business_id)
+    },
+    customer_register_url: buildCustomerRegisterUrl_(business.business_code),
+    customer_share_text: buildCustomerShareMessage_(business, buildCustomerRegisterUrl_(business.business_code))
+  };
+}
+
+function scanSimpleCustomer_(context, data) {
+  ensureSimpleModel_();
+  requireFields_(data, ['customer_code']);
+
+  var business = getBusinessById_(context.user.business_id);
+  assertSimpleBusinessCanOperate_(business, true);
+
+  var customer = getSimpleCustomerByCode_(data.customer_code);
+  if (!customer || customer.status !== 'active') {
+    throw appError_('Cliente no encontrado o inactivo.', 'customer_not_found');
+  }
+
+  var level = publicLevel_(customer.total_passes || 0);
+
+  return {
+    customer: publicCustomer_(customer),
+    business: publicBusiness_(business),
+    level: level,
+    promotions: getAvailableSimpleCoupons_(business.business_id, level.current_level),
+    recent_passes: getSimplePassHistory_(customer.customer_id, 5),
+    scan_calls: 1
+  };
+}
+
+function registerSimplePass_(context, data) {
+  ensureSimpleModel_();
+  requireFields_(data, ['customer_code']);
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    var business = getBusinessById_(context.user.business_id);
+    assertSimpleBusinessCanOperate_(business, true);
+
+    var customer = getSimpleCustomerByCode_(data.customer_code);
+    if (!customer || customer.status !== 'active') {
+      throw appError_('Cliente no encontrado o inactivo.', 'customer_not_found');
+    }
+
+    var duplicate = findRecentSimplePass_(customer.customer_id, business.business_id, context.user.user_id, 8);
+    if (duplicate) {
+      return buildSimplePassResult_(customer, business, null, true);
+    }
+
+    var previousPasses = parseInt(customer.total_passes || '0', 10) || 0;
+    var previousLevel = calculateLevel_(previousPasses);
+    var newPasses = Math.min(10000, previousPasses + 1);
+    var newLevel = calculateLevel_(newPasses);
+    var pass = {
+      pass_id: generateId_('PAS'),
+      customer_id: customer.customer_id,
+      business_id: business.business_id,
+      user_id: context.user.user_id,
+      previous_passes: previousPasses,
+      new_passes: newPasses,
+      previous_level: previousLevel,
+      new_level: newLevel,
+      created_at: nowIso_()
+    };
+
+    appendObject_('PASSES', pass);
+    updateRowByNumber_('CUSTOMERS', customer._rowNumber, {
+      total_passes: newPasses,
+      current_level: newLevel,
+      updated_at: nowIso_()
+    });
+
+    customer = getCustomerById_(customer.customer_id);
+    logActivity_(context.user.user_id, business.business_id, 'pass_registered', 'customer', customer.customer_id, {
+      pass_id: pass.pass_id,
+      previous_level: previousLevel,
+      new_level: newLevel
+    });
+
+    return buildSimplePassResult_(customer, business, pass, false);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function buildSimplePassResult_(customer, business, pass, duplicate) {
+  var level = publicLevel_(customer.total_passes || 0);
+  var previousLevel = pass ? parseInt(pass.previous_level || level.current_level, 10) : level.current_level;
+
+  return {
+    customer: publicCustomer_(customer),
+    business: publicBusiness_(business),
+    level: level,
+    pass: pass,
+    duplicate: Boolean(duplicate),
+    leveled_up: pass ? level.current_level > previousLevel : false,
+    promotions: getAvailableSimpleCoupons_(business.business_id, level.current_level),
+    history: getSimplePassHistory_(customer.customer_id, 5),
+    api_calls_for_scan: 1
+  };
+}
+
+function listSimpleBusinessCustomers_(context) {
+  ensureSimpleModel_();
+  var business = getBusinessById_(context.user.business_id);
+  assertSimpleBusinessCanOperate_(business, true);
+
+  var passes = findRowsByValue_('PASSES', 'business_id', business.business_id)
+    .sort(function(left, right) { return String(right.created_at).localeCompare(String(left.created_at)); });
+  var seen = {};
+  var rows = [];
+  passes.forEach(function(pass) {
+    if (seen[pass.customer_id]) {
+      return;
+    }
+    seen[pass.customer_id] = true;
+    var customer = getCustomerById_(pass.customer_id);
+    if (customer) {
+      rows.push({
+        customer: publicCustomer_(customer),
+        level: publicLevel_(customer.total_passes || 0),
+        last_pass_at: pass.created_at
+      });
+    }
+  });
+
+  return {
+    customers: rows
+  };
+}
+
+function listSimpleCoupons_(context) {
+  ensureSimpleModel_();
+  var business = getBusinessById_(context.user.business_id);
+  assertSimpleBusinessCanOperate_(business, true);
+
+  return {
+    coupons: getSimpleCouponsForBusiness_(business.business_id)
+  };
+}
+
+function saveSimpleCoupon_(context, data) {
+  ensureSimpleModel_();
+  requireFields_(data, ['title', 'level_required']);
+
+  var business = getBusinessById_(context.user.business_id);
+  assertSimpleBusinessCanOperate_(business, true);
+
+  var now = nowIso_();
+  var coupon = {
+    coupon_id: data.coupon_id || generateId_('CPN'),
+    business_id: business.business_id,
+    title: sanitizeText_(data.title, 160),
+    description: sanitizeText_(data.description || '', 400),
+    level_required: String(Math.max(1, parseInt(data.level_required || '1', 10) || 1)),
+    start_date: sanitizeDateText_(data.start_date || ''),
+    end_date: sanitizeDateText_(data.end_date || ''),
+    status: String(data.status || 'active').toLowerCase(),
+    created_at: now
+  };
+
+  if (data.coupon_id) {
+    updateRowById_('COUPONS', 'coupon_id', data.coupon_id, coupon);
+    coupon = findRowByValue_('COUPONS', 'coupon_id', data.coupon_id);
+  } else {
+    appendObject_('COUPONS', coupon);
+  }
+
+  return {
+    coupon: publicSimpleCoupon_(coupon)
+  };
+}
+
+function redeemSimpleCoupon_(context, data) {
+  ensureSimpleModel_();
+  requireFields_(data, ['customer_code', 'coupon_id']);
+
+  var business = getBusinessById_(context.user.business_id);
+  assertSimpleBusinessCanOperate_(business, true);
+  var customer = getSimpleCustomerByCode_(data.customer_code);
+  var coupon = findRowByValue_('COUPONS', 'coupon_id', data.coupon_id);
+
+  if (!customer || !coupon || coupon.business_id !== business.business_id) {
+    throw appError_('Promocion no disponible.', 'coupon_not_available');
+  }
+
+  appendObject_('REDEMPTIONS', {
+    redemption_id: generateId_('RED'),
+    business_id: business.business_id,
+    customer_id: customer.customer_id,
+    coupon_id: coupon.coupon_id,
+    user_id: context.user.user_id,
+    card_id: '',
+    reward_id: coupon.coupon_id,
+    staff_user_id: context.user.user_id,
+    status: 'redeemed',
+    created_at: nowIso_(),
+    redeemed_at: nowIso_()
+  });
+
+  return {
+    redeemed: true,
+    customer: publicCustomer_(customer),
+    coupon: publicSimpleCoupon_(coupon)
+  };
+}
+
+function renewBusinessPlan_(context, data) {
+  requireFields_(data, ['business_id', 'plan_type']);
+  var business = getBusinessById_(data.business_id);
+  if (!business) {
+    throw appError_('Negocio no encontrado.', 'business_not_found');
+  }
+
+  var planType = normalizePlanType_(data.plan_type);
+  var start = sanitizeDateText_(data.plan_start || todayIso_());
+  var end = calculatePlanEnd_(start, planType);
+
+  updateRowByNumber_('BUSINESSES', business._rowNumber, {
+    status: 'active',
+    plan: planType,
+    plan_type: planType,
+    plan_start: start,
+    plan_end: end,
+    plan_status: planType === 'FREE' ? 'trial' : 'active',
+    billing_status: 'current',
+    next_payment_date: end,
+    suspended_reason: '',
+    reactivated_at: nowIso_()
+  });
+  updateBusinessUsersStatus_(business.business_id, 'active');
+
+  return {
+    business: publicBusiness_(getBusinessById_(business.business_id))
+  };
+}
+
+function migrateToSimpleModel_() {
+  ensureSimpleModel_();
+
+  var customers = getAllRows_('CUSTOMERS');
+  var migrated = 0;
+  customers.forEach(function(customer) {
+    var updates = {};
+    if (!customer.customer_code) {
+      updates.customer_code = customer.wallet_id && String(customer.wallet_id).indexOf('LOY-') === 0 ? customer.wallet_id : generateUniqueCustomerCode_();
+    }
+    if (!customer.wallet_id || String(customer.wallet_id).indexOf('WALLET') === 0) {
+      updates.wallet_id = updates.customer_code || customer.customer_code || generateUniqueCustomerCode_();
+    }
+    if (customer.total_passes === '' || customer.total_passes === undefined || customer.total_passes === null) {
+      updates.total_passes = 0;
+    }
+    if (!customer.current_level) {
+      updates.current_level = calculateLevel_(updates.total_passes || customer.total_passes || 0);
+    }
+    if (Object.keys(updates).length && customer._rowNumber) {
+      updateRowByNumber_('CUSTOMERS', customer._rowNumber, updates);
+      migrated += 1;
+    }
+  });
+
+  return {
+    migrated_customers: migrated,
+    sheets: ['BUSINESSES', 'USERS', 'CUSTOMERS', 'PASSES', 'COUPONS', 'REDEMPTIONS', 'REQUESTS', 'SESSIONS', 'ACTIVITY_LOG'],
+    destructive: false
+  };
+}
+
+function assertSimpleBusinessCanOperate_(business, throwOnExpired) {
+  if (!business) {
+    throw appError_('Negocio no encontrado.', 'business_not_found');
+  }
+
+  var status = getBusinessPlanStatus_(business);
+  if (status !== business.plan_status && business._rowNumber) {
+    updateRowByNumber_('BUSINESSES', business._rowNumber, {
+      plan_status: status
+    });
+    business.plan_status = status;
+  }
+
+  if (business.status !== 'active' || status === 'expired' || status === 'suspended') {
+    if (throwOnExpired) {
+      throw appError_('Tu servicio ha vencido. Contacta al administrador para renovar.', 'plan_expired');
+    }
+    return false;
+  }
+
+  return true;
+}
+
+function getBusinessPlanStatus_(business) {
+  var status = String(business.plan_status || business.billing_status || 'active').toLowerCase();
+  if (business.status === 'suspended') {
+    return 'suspended';
+  }
+  if (business.plan_end) {
+    var end = new Date(String(business.plan_end).slice(0, 10) + 'T23:59:59Z');
+    if (!isNaN(end.getTime()) && end.getTime() < Date.now()) {
+      return 'expired';
+    }
+  }
+  if (status === 'trial' || status === 'active') {
+    return status;
+  }
+  return 'active';
+}
+
+function normalizePlanType_(planType) {
+  var value = String(planType || '1_MONTH').toUpperCase();
+  if (['FREE', '1_MONTH', '3_MONTHS', '6_MONTHS', '1_YEAR'].indexOf(value) === -1) {
+    return '1_MONTH';
+  }
+  return value;
+}
+
+function calculatePlanEnd_(startDate, planType) {
+  var date = new Date(String(startDate || todayIso_()).slice(0, 10) + 'T00:00:00Z');
+  var months = { FREE: 1, '1_MONTH': 1, '3_MONTHS': 3, '6_MONTHS': 6, '1_YEAR': 12 }[normalizePlanType_(planType)] || 1;
+  date.setUTCMonth(date.getUTCMonth() + months);
+  return date.toISOString().slice(0, 10);
+}
+
+function todayIso_() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getAvailableSimpleCoupons_(businessId, currentLevel) {
+  return getSimpleCouponsForBusiness_(businessId).filter(function(coupon) {
+    return isSimpleCouponActive_(coupon) && (parseInt(coupon.level_required || '1', 10) || 1) <= currentLevel;
+  });
+}
+
+function getAvailableSimpleCouponsForCustomer_(currentLevel) {
+  return getAllRows_('COUPONS')
+    .filter(function(coupon) {
+      return isSimpleCouponActive_(coupon) && (parseInt(coupon.level_required || '1', 10) || 1) <= currentLevel;
+    })
+    .map(publicSimpleCoupon_);
+}
+
+function getSimpleCouponsForBusiness_(businessId) {
+  return findRowsByValue_('COUPONS', 'business_id', businessId)
+    .map(publicSimpleCoupon_)
+    .sort(function(left, right) {
+      return (parseInt(left.level_required || '1', 10) || 1) - (parseInt(right.level_required || '1', 10) || 1);
+    });
+}
+
+function isSimpleCouponActive_(coupon) {
+  var status = String(coupon.status || 'active').toLowerCase();
+  var today = todayIso_();
+  return status === 'active' &&
+    (!coupon.start_date || String(coupon.start_date).slice(0, 10) <= today) &&
+    (!coupon.end_date || String(coupon.end_date).slice(0, 10) >= today);
+}
+
+function publicSimpleCoupon_(coupon) {
+  var business = coupon.business_id ? getBusinessById_(coupon.business_id) : null;
+  return {
+    coupon_id: coupon.coupon_id,
+    business_id: coupon.business_id || '',
+    business: business ? publicBusiness_(business) : null,
+    title: coupon.title || '',
+    description: coupon.description || '',
+    level_required: parseInt(coupon.level_required || '1', 10) || 1,
+    start_date: coupon.start_date || '',
+    end_date: coupon.end_date || '',
+    status: coupon.status || 'active',
+    created_at: coupon.created_at || ''
+  };
+}
+
+function getSimplePassHistory_(customerId, limit) {
+  return findRowsByValue_('PASSES', 'customer_id', customerId)
+    .sort(function(left, right) { return String(right.created_at).localeCompare(String(left.created_at)); })
+    .slice(0, limit || 10)
+    .map(function(pass) {
+      return {
+        pass_id: pass.pass_id,
+        customer_id: pass.customer_id,
+        business_id: pass.business_id,
+        business: pass.business_id ? publicBusiness_(getBusinessById_(pass.business_id) || {}) : null,
+        user_id: pass.user_id || '',
+        previous_passes: parseInt(pass.previous_passes || '0', 10) || 0,
+        new_passes: parseInt(pass.new_passes || '0', 10) || 0,
+        previous_level: parseInt(pass.previous_level || '1', 10) || 1,
+        new_level: parseInt(pass.new_level || '1', 10) || 1,
+        created_at: pass.created_at || ''
+      };
+    });
+}
+
+function findRecentSimplePass_(customerId, businessId, userId, seconds) {
+  var threshold = Date.now() - ((seconds || 8) * 1000);
+  var passes = findRowsByValue_('PASSES', 'customer_id', customerId);
+
+  for (var index = 0; index < passes.length; index += 1) {
+    var pass = passes[index];
+    if (pass.business_id !== businessId || pass.user_id !== userId) {
+      continue;
+    }
+    var createdAt = new Date(pass.created_at);
+    if (!isNaN(createdAt.getTime()) && createdAt.getTime() >= threshold) {
+      return pass;
+    }
+  }
+
+  return null;
+}
+
+function countEligibleSimpleCustomers_(businessId) {
+  var coupons = getAvailableSimpleCoupons_(businessId, 1001);
+  if (!coupons.length) {
+    return 0;
+  }
+  var minLevel = coupons.reduce(function(min, coupon) {
+    return Math.min(min, coupon.level_required || 1);
+  }, 1001);
+  return getAllRows_('CUSTOMERS').filter(function(customer) {
+    return calculateLevel_(customer.total_passes || 0) >= minLevel;
+  }).length;
 }

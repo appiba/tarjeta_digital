@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Escaner | Loyalty</title>
-  <link rel="stylesheet" href="../assets/css/main.css?v=wallet-v21">
-  <link rel="stylesheet" href="../assets/css/business.css?v=wallet-v21">
+  <link rel="stylesheet" href="../assets/css/main.css?v=simple-mvp-v1">
+  <link rel="stylesheet" href="../assets/css/business.css?v=simple-mvp-v1">
 </head>
 <body class="business-accent" data-root="../">
   <div class="app-shell">
@@ -13,11 +13,9 @@
       <a class="brand" href="../index.html"><span class="brand__mark">L</span><span>Loyalty</span></a>
       <nav aria-label="Negocio">
         <a href="index.html"><i data-lucide="layout-dashboard"></i>Inicio</a>
-        <a href="tarjeta.html"><i data-lucide="badge"></i>Mi tarjeta</a>
-        <a href="clientes.html"><i data-lucide="users"></i>Clientes</a>
-        <a href="promociones.html"><i data-lucide="megaphone"></i>Promociones</a>
         <a class="is-active" href="scanner.html"><i data-lucide="scan-line"></i>Escanear</a>
-        <a href="transacciones.html"><i data-lucide="receipt-text"></i>Transacciones</a>
+        <a href="promociones.html"><i data-lucide="megaphone"></i>Promociones</a>
+        <a href="clientes.html"><i data-lucide="users"></i>Clientes</a>
         <a href="configuracion.html"><i data-lucide="settings"></i>Configuracion</a>
         <button type="button" data-logout><i data-lucide="log-out"></i>Cerrar sesion</button>
       </nav>
@@ -27,7 +25,7 @@
         <div>
           <span class="badge" data-page-label>Escanear</span>
           <h1>Escaner QR</h1>
-          <p data-scanner-state>Preparando modulo...</p>
+          <p data-scanner-state>Preparando escaneo simple de pasadas.</p>
         </div>
         <div class="user-chip"><span data-user-name>Usuario</span></div>
       </section>
@@ -35,7 +33,7 @@
         <article class="scan-stage">
           <div>
             <h2>Escanear cliente</h2>
-            <p data-scanner-state>Abre la camara y apunta al QR que muestra el cliente.</p>
+            <p data-scanner-state>Abre la camara y apunta al codigo QR del cliente.</p>
             <div class="scan-frame" aria-label="Area de escaneo QR">
               <video data-camera-video muted playsinline hidden></video>
               <i data-lucide="scan-line"></i>
@@ -47,37 +45,34 @@
             </div>
             <form class="form scanner-form" data-wallet-scan-form>
               <div class="field">
-                <label for="wallet_code">Wallet del cliente</label>
-                <input id="wallet_code" name="wallet" type="text" placeholder="WALLET-XXXX o URL del QR">
+                <label for="wallet_code">Codigo del cliente</label>
+                <input id="wallet_code" name="wallet" type="text" placeholder="LOY-8U487G">
               </div>
-              <button class="button button--primary" type="submit">Buscar Wallet</button>
+              <button class="button button--primary" type="submit">Buscar cliente</button>
             </form>
           </div>
         </article>
         <article class="panel-card" data-scanner-result>
-          <h2>Ficha del cliente</h2>
-          <p>Cuando se escanee una tarjeta, aqui apareceran las acciones disponibles.</p>
+          <h2>Cliente encontrado</h2>
+          <p>Escanea o pega el codigo LOY del cliente. Luego confirma una sola pasada.</p>
           <div class="settings-list">
-            <div><span>Sellos</span><strong>0</strong></div>
-            <div><span>Puntos</span><strong>0</strong></div>
-            <div><span>Visitas</span><strong>0</strong></div>
+            <div><span>Pasadas</span><strong>0</strong></div>
+            <div><span>Nivel</span><strong>1</strong></div>
+            <div><span>Codigo</span><strong>LOY</strong></div>
           </div>
           <div class="client-action-grid" style="margin-top:16px;">
-            <button class="button button--primary" type="button" disabled>+1 Sello</button>
-            <button class="button button--ghost" type="button" disabled>+1 Visita</button>
-            <button class="button button--ghost" type="button" disabled>Agregar puntos</button>
-            <button class="button button--warning" type="button" disabled>Canjear premio</button>
+            <button class="button button--primary" type="button" disabled>Confirmar pasada</button>
           </div>
         </article>
       </section>
     </main>
   </div>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script src="../assets/js/utils.js?v=wallet-v21"></script>
-  <script src="../assets/js/api.js?v=wallet-v21"></script>
-  <script src="../assets/js/auth.js?v=wallet-v21"></script>
-  <script src="../assets/js/business.js?v=wallet-v21"></script>
-  <script src="../assets/js/scanner.js?v=wallet-v21"></script>
+  <script src="../assets/js/utils.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/api.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/auth.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/business.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/scanner.js?v=simple-mvp-v1"></script>
   <script>
     BusinessApp.init('Escanear', ['business_owner', 'staff'], { preferCache: true }).then(function(context) {
       if (context) {

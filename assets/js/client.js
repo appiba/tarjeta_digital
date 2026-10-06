@@ -11,24 +11,41 @@
     init();
     var fallbackWallet = getFallbackWallet();
     var session = AppAPI.getCustomerSession();
+    var code = getParam('code') || getParam('wallet');
+
+    if ((!session || !session.token) && code) {
+      await loadSimpleProfileByCode(code, paintSimpleWallet);
+      return;
+    }
 
     if ((!session || !session.token) && fallbackWallet) {
       currentWallet = fallbackWallet;
-      paintWallet(fallbackWallet);
+      paintSimpleWallet(fallbackWallet);
       return;
     }
 
     await withCustomerSession(async function(session) {
-      var result = await AppAPI.apiRequest('getCustomerWallet', {
-        customer_token: session.token
+      var result = await AppAPI.apiRequest('getSimpleCustomerProfile', {
+        customer_token: session.token,
+        customer_code: code
       });
 
+      if (!result.success && isNotImplemented(result, 'getSimpleCustomerProfile')) {
+        result = await AppAPI.apiRequest('getCustomerWallet', {
+          customer_token: session.token
+        });
+      }
+
       if (!result.success) {
-        throw new Error(result.message || 'No se pudo cargar tu Wallet.');
+        throw new Error(result.message || 'No se pudo cargar tu perfil.');
       }
 
       currentWallet = result.data;
-      paintWallet(result.data);
+      if (result.data.level || result.data.qr) {
+        paintSimpleWallet(result.data);
+      } else {
+        paintWallet(result.data);
+      }
     });
   }
 
@@ -69,6 +86,14 @@
     init();
     var fallbackWallet = getFallbackWallet();
     var session = AppAPI.getCustomerSession();
+    var code = getParam('code') || getParam('wallet');
+
+    if ((!session || !session.token) && code) {
+      await loadSimpleProfileByCode(code, function(data) {
+        paintSimplePage(pageName, data);
+      });
+      return;
+    }
 
     if ((!session || !session.token) && fallbackWallet) {
       if (pageName === 'promotions') {
@@ -88,13 +113,25 @@
     }
 
     await withCustomerSession(async function(session) {
-      var action = pageAction(pageName);
-      var result = await AppAPI.apiRequest(action, {
-        customer_token: session.token
+      var result = await AppAPI.apiRequest('getSimpleCustomerProfile', {
+        customer_token: session.token,
+        customer_code: code
       });
+
+      if (!result.success && isNotImplemented(result, 'getSimpleCustomerProfile')) {
+        var action = pageAction(pageName);
+        result = await AppAPI.apiRequest(action, {
+          customer_token: session.token
+        });
+      }
 
       if (!result.success) {
         throw new Error(result.message || 'No se pudo cargar la informacion.');
+      }
+
+      if (result.data.level || result.data.qr) {
+        paintSimplePage(pageName, result.data);
+        return;
       }
 
       if (pageName === 'promotions') {
@@ -107,6 +144,36 @@
         paintWalletQr(result.data.wallet_qr || {}, result.data.customer || {});
       }
     });
+  }
+
+  async function loadSimpleProfileByCode(code, painter) {
+    try {
+      var result = await AppAPI.apiRequest('getSimpleCustomerProfile', {
+        customer_code: code
+      });
+
+      if (!result.success) {
+        throw new Error(result.message || 'No se pudo cargar el perfil.');
+      }
+
+      currentWallet = result.data;
+      painter(result.data);
+    } catch (error) {
+      AppUtils.toast(error.message, 'error');
+      showMissingSession();
+    }
+  }
+
+  function paintSimplePage(pageName, data) {
+    if (pageName === 'promotions') {
+      paintPromotions(data.promotions || []);
+    } else if (pageName === 'history') {
+      paintHistory(data.history || []);
+    } else if (pageName === 'profile') {
+      paintProfile(data.customer || {});
+    } else if (pageName === 'qr') {
+      paintWalletQr(data.qr || data.wallet_qr || {}, data.customer || {});
+    }
   }
 
   function pageAction(pageName) {
@@ -123,6 +190,14 @@
     }
 
     return 'getCustomerWallet';
+  }
+
+  function isNotImplemented(result, action) {
+    var message = String(result && result.message || '').toLowerCase();
+    var error = String(result && result.error || '').toLowerCase();
+    var actionName = String(action || '').toLowerCase();
+
+    return error === 'not_implemented' || (message.indexOf('accion no implementada') !== -1 && message.indexOf(actionName) !== -1);
   }
 
   async function withCustomerSession(callback) {
@@ -152,7 +227,7 @@
 
     target.innerHTML = '<section class="panel-card wallet-empty">' +
       '<i data-lucide="wallet"></i>' +
-      '<h1>Abre tu Wallet desde un negocio</h1>' +
+      '<h1>Abre tu perfil desde un negocio</h1>' +
       '<p>Escanea el QR o entra al link que te compartio un establecimiento para identificarte con tu WhatsApp.</p>' +
       '<a class="button button--primary" href="../index.html">Ir al inicio</a>' +
       '</section>';
@@ -219,7 +294,7 @@
           type: 'coupon',
           business: item.business || {},
           title: coupon.title || 'Cupon disponible',
-          description: coupon.description || 'Beneficio de tu tarjeta.',
+          description: coupon.description || 'Beneficio de tu perfil.',
           status: coupon.status || 'available',
           start_date: coupon.created_at || '',
           end_date: ''
@@ -235,7 +310,7 @@
     var cards = data.cards || [];
 
     setText('[data-wallet-name]', firstName(customer.full_name || 'Cliente'));
-    setText('[data-wallet-count]', cards.length + ' tarjetas activas');
+    setText('[data-wallet-count]', cards.length + ' negocios activos');
     setText('[data-wallet-id]', data.wallet_qr && data.wallet_qr.display ? data.wallet_qr.display : customer.wallet_id || '');
 
     var list = AppUtils.qs('[data-wallet-cards]');
@@ -245,13 +320,76 @@
     }
 
     if (cards.length === 0) {
-      list.innerHTML = '<article class="wallet-empty"><i data-lucide="badge"></i><h2>Sin tarjetas todavia</h2><p>Escanea el QR de un negocio para agregar tu primera tarjeta.</p></article>';
+      list.innerHTML = '<article class="wallet-empty"><i data-lucide="badge"></i><h2>Sin actividad todavia</h2><p>Usa tu codigo Loyalty en un negocio para registrar tu primera pasada.</p></article>';
       AppUtils.mountIcons();
       return;
     }
 
     list.innerHTML = cards.map(renderWalletCard).join('');
     AppUtils.mountIcons();
+  }
+
+  function paintSimpleWallet(data) {
+    var customer = data.customer || {};
+    var level = data.level || {};
+    var qr = data.qr || data.wallet_qr || {};
+    var code = customer.customer_code || customer.wallet_id || data.customer_code || data.wallet_id || qr.customer_code || qr.wallet_id || '';
+    var promotions = data.promotions || [];
+    var history = data.history || [];
+
+    setText('[data-wallet-name]', firstName(customer.full_name || 'Cliente'));
+    setText('[data-wallet-count]', 'Nivel ' + (level.current_level || customer.current_level || 1));
+    setText('[data-wallet-id]', code);
+
+    var list = AppUtils.qs('[data-wallet-cards]');
+
+    if (!list) {
+      return;
+    }
+
+    list.innerHTML =
+      '<article class="wallet-qr-card">' +
+        '<span class="badge">Mi codigo unico</span>' +
+        '<h1>' + escapeHtml(code || 'LOY') + '</h1>' +
+        '<div class="wallet-qr-frame"><img alt="QR unico Loyalty" src="' + escapeAttr(qrImageUrl(code)) + '"></div>' +
+        '<strong>' + escapeHtml(code) + '</strong>' +
+      '</article>' +
+      '<article class="panel-card">' +
+        '<h2>Nivel ' + escapeHtml(level.current_level || customer.current_level || 1) + '</h2>' +
+        '<p>' + escapeHtml(level.label || ((customer.total_passes || 0) + ' pasadas')) + '</p>' +
+        '<div class="wallet-progress"><span style="width:' + escapeAttr(level.progress_percent || 0) + '%"></span></div>' +
+        '<p>Te faltan ' + escapeHtml(level.remaining_to_next_level === undefined ? 10 : level.remaining_to_next_level) + ' pasadas para subir de nivel.</p>' +
+      '</article>' +
+      '<article class="panel-card"><h2>Promociones disponibles</h2>' + renderSimplePromotions(promotions) + '</article>' +
+      '<article class="panel-card"><h2>Historial reciente</h2>' + renderSimpleHistory(history) + '</article>';
+
+    AppUtils.mountIcons();
+  }
+
+  function qrImageUrl(payload) {
+    return payload ? 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=' + encodeURIComponent(payload) : '';
+  }
+
+  function renderSimplePromotions(promotions) {
+    if (!promotions || !promotions.length) {
+      return '<p class="muted">Aun no tienes promociones disponibles.</p>';
+    }
+
+    return '<div class="client-list">' + promotions.map(function(promotion) {
+      var business = promotion.business || {};
+      return '<article class="history-card"><div class="history-card__icon"><i data-lucide="ticket"></i></div><div><span class="badge">' + escapeHtml(business.business_name || ('Nivel ' + (promotion.level_required || ''))) + '</span><h3>' + escapeHtml(promotion.title || 'Promocion') + '</h3><p>' + escapeHtml(promotion.description || '') + '</p></div></article>';
+    }).join('') + '</div>';
+  }
+
+  function renderSimpleHistory(history) {
+    if (!history || !history.length) {
+      return '<p class="muted">Sin pasadas todavia.</p>';
+    }
+
+    return '<div class="client-list">' + history.map(function(item) {
+      var business = item.business || {};
+      return '<article class="history-card"><div class="history-card__icon"><i data-lucide="scan-line"></i></div><div><strong>+1 pasada</strong><p>' + escapeHtml(business.business_name || 'Local') + ' / ' + escapeHtml(AppUtils.formatDate(item.created_at)) + '</p></div></article>';
+    }).join('') + '</div>';
   }
 
   function renderWalletCard(item, index) {
@@ -327,15 +465,15 @@
 
   function paintWalletQr(walletQr, customer) {
     setText('[data-qr-customer]', customer.full_name || 'Cliente');
-    setText('[data-wallet-qr-id]', walletQr.display || walletQr.wallet_id || '');
-    setText('[data-wallet-qr-payload]', walletQr.wallet_id || '');
+    setText('[data-wallet-qr-id]', walletQr.display || walletQr.customer_code || walletQr.wallet_id || '');
+    setText('[data-wallet-qr-payload]', walletQr.customer_code || walletQr.wallet_id || '');
 
     var img = AppUtils.qs('[data-wallet-qr-image]');
-    var payload = walletQr.scanner_url || walletQr.wallet_id || '';
+    var payload = walletQr.payload || walletQr.customer_code || walletQr.wallet_id || '';
 
     if (img && payload) {
       img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=' + encodeURIComponent(payload);
-      img.alt = 'QR de Wallet ' + (walletQr.display || '');
+      img.alt = 'QR Loyalty ' + (walletQr.display || payload);
     }
   }
 
@@ -349,7 +487,7 @@
     }
 
     img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=' + encodeURIComponent(payload);
-    img.alt = 'QR real de Wallet ' + (walletQr.display || walletId);
+    img.alt = 'QR Loyalty ' + (walletQr.display || walletId);
   }
 
   function buildCardScannerPayload(walletQr, walletId, cardId) {
@@ -631,7 +769,7 @@
   }
 
   function preserveWalletInNavigation(walletId) {
-    var wallet = walletId || getParam('wallet') || (AppAPI.getCustomerSession() && AppAPI.getCustomerSession().wallet_id) || '';
+    var wallet = walletId || getParam('code') || getParam('wallet') || (AppAPI.getCustomerSession() && AppAPI.getCustomerSession().wallet_id) || '';
 
     AppUtils.qsa('.bottom-nav a').forEach(function(link) {
       var href = link.getAttribute('href');
@@ -643,7 +781,7 @@
       var url = new URL(href, window.location.href);
 
       if (wallet) {
-        url.searchParams.set('wallet', wallet);
+        url.searchParams.set('code', wallet);
       }
 
       link.href = url.pathname.split('/').pop() + url.search;

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'loyalty-platform-wallet-v21';
+const CACHE_NAME = 'loyalty-platform-simple-mvp-v1';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -11,7 +11,10 @@ const STATIC_ASSETS = [
   './client/perfil.html',
   './client/card.html',
   './client/qr.html',
+  './business/index.html',
   './business/clientes.html',
+  './business/configuracion.html',
+  './business/promociones.html',
   './business/scanner.html',
   './assets/css/main.css',
   './assets/css/admin.css',

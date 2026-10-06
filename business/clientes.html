@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Clientes | Loyalty</title>
-  <link rel="stylesheet" href="../assets/css/main.css?v=wallet-v21">
-  <link rel="stylesheet" href="../assets/css/business.css?v=wallet-v21">
+  <link rel="stylesheet" href="../assets/css/main.css?v=simple-mvp-v1">
+  <link rel="stylesheet" href="../assets/css/business.css?v=simple-mvp-v1">
 </head>
 <body class="business-accent" data-root="../">
   <div class="app-shell">
@@ -13,11 +13,9 @@
       <a class="brand" href="../index.html"><span class="brand__mark">L</span><span>Loyalty</span></a>
       <nav aria-label="Negocio">
         <a href="index.html"><i data-lucide="layout-dashboard"></i>Inicio</a>
-        <a href="tarjeta.html"><i data-lucide="badge"></i>Mi tarjeta</a>
-        <a class="is-active" href="clientes.html"><i data-lucide="users"></i>Clientes</a>
-        <a href="promociones.html"><i data-lucide="megaphone"></i>Promociones</a>
         <a href="scanner.html"><i data-lucide="scan-line"></i>Escanear</a>
-        <a href="transacciones.html"><i data-lucide="receipt-text"></i>Transacciones</a>
+        <a href="promociones.html"><i data-lucide="megaphone"></i>Promociones</a>
+        <a class="is-active" href="clientes.html"><i data-lucide="users"></i>Clientes</a>
         <a href="configuracion.html"><i data-lucide="settings"></i>Configuracion</a>
         <button type="button" data-logout><i data-lucide="log-out"></i>Cerrar sesion</button>
       </nav>
@@ -27,29 +25,29 @@
         <div>
           <span class="badge" data-page-label>Clientes</span>
           <h1>Clientes</h1>
-          <p>Busqueda por nombre, WhatsApp, correo o tarjeta.</p>
+          <p>Clientes que ya fueron escaneados por este negocio.</p>
         </div>
         <div class="user-chip"><span data-user-name>Usuario</span></div>
       </section>
       <section class="panel-card">
         <div class="field">
           <label for="customer_search">Buscar clientes</label>
-          <input id="customer_search" type="search" placeholder="Nombre, WhatsApp, correo o tarjeta" data-business-customer-search>
+          <input id="customer_search" type="search" placeholder="Nombre, WhatsApp o codigo LOY" data-business-customer-search>
         </div>
         <div class="panel-actions">
           <span class="badge">Activos</span>
-          <span class="badge">Con premio</span>
-          <span class="badge">Nuevos</span>
+          <span class="badge">Nivel general</span>
+          <span class="badge">Pasadas</span>
         </div>
       </section>
       <section class="client-list" data-business-customers-list></section>
     </main>
   </div>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script src="../assets/js/utils.js?v=wallet-v21"></script>
-  <script src="../assets/js/api.js?v=wallet-v21"></script>
-  <script src="../assets/js/auth.js?v=wallet-v21"></script>
-  <script src="../assets/js/business.js?v=wallet-v21"></script>
+  <script src="../assets/js/utils.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/api.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/auth.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/business.js?v=simple-mvp-v1"></script>
   <script>BusinessApp.initCustomers();</script>
 </body>
 </html>

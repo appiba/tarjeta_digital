@@ -24,7 +24,11 @@
     }
 
     try {
-      var result = await AppAPI.apiRequest('getBusinessHome');
+      var result = await AppAPI.apiRequest('getSimpleBusinessHome');
+
+      if (!result.success && isNotImplemented(result, 'getSimpleBusinessHome')) {
+        result = await AppAPI.apiRequest('getBusinessHome');
+      }
 
       if (!result.success) {
         throw new Error(result.message || 'No se pudo cargar el negocio.');
@@ -52,11 +56,17 @@
     container.innerHTML = renderLoading();
 
     try {
-      var result = await AppAPI.apiRequest('listBusinessCustomers', {});
+      var result = await AppAPI.apiRequest('listSimpleBusinessCustomers', {});
+
+      if (!result.success) {
+        if (isNotImplemented(result, 'listSimpleBusinessCustomers')) {
+          result = await AppAPI.apiRequest('listBusinessCustomers', {});
+        }
+      }
 
       if (!result.success) {
         if (isNotImplemented(result, 'listBusinessCustomers')) {
-          var homeResult = await AppAPI.apiRequest('getBusinessHome', {});
+          var homeResult = await AppAPI.apiRequest('getSimpleBusinessHome', {});
           var business = homeResult.success ? homeResult.data.business || {} : {};
           var localCustomers = getLocalBusinessCustomers(business);
 
@@ -104,12 +114,15 @@
     setText('[data-business-type]', business.business_type || 'Negocio local');
     setText('[data-business-code]', business.business_code || '');
     setText('[data-business-initials]', initials(business.business_name || 'Loyalty'));
-    setText('[data-program-goal]', String(program.goal || '10'));
-    setText('[data-program-type]', labelProgramType(program.program_type));
-    setText('[data-reward-name]', reward.name || 'Premio especial');
+    setText('[data-program-goal]', '10');
+    setText('[data-program-type]', 'pasadas');
+    setText('[data-reward-name]', reward.name || 'Promociones por nivel');
     setText('[data-stat-customers]', stats.customers || 0);
-    setText('[data-stat-transactions]', stats.transactions || 0);
+    setText('[data-stat-transactions]', stats.passes || stats.transactions || 0);
     setText('[data-stat-promotions]', stats.promotions || 0);
+    setText('[data-stat-eligible]', stats.eligible_customers || 0);
+    setText('[data-plan-status]', planStatusLabel(business.plan_status));
+    setText('[data-plan-end]', business.plan_end ? AppUtils.formatDate(business.plan_end) : 'Sin fecha');
     setText('[data-customer-link]', customerLink);
     paintPreviewBeans(program.goal || 10);
 
@@ -141,7 +154,13 @@
     container.innerHTML = renderLoading();
 
     try {
-      var result = await AppAPI.apiRequest('listBusinessPromotions', {});
+      var result = await AppAPI.apiRequest('listSimpleCoupons', {});
+
+      if (!result.success) {
+        if (isNotImplemented(result, 'listSimpleCoupons')) {
+          result = await AppAPI.apiRequest('listBusinessPromotions', {});
+        }
+      }
 
       if (!result.success) {
         if (isNotImplemented(result, 'listBusinessPromotions')) {
@@ -153,7 +172,7 @@
         throw new Error(result.message || 'No se pudieron cargar promociones.');
       }
 
-      paintBusinessPromotions(result.data.promotions || []);
+      paintBusinessPromotions(result.data.coupons || result.data.promotions || []);
     } catch (error) {
       container.innerHTML = '<article class="panel-card"><h2>Error</h2><p>' + escapeHtml(error.message) + '</p></article>';
     }
@@ -174,17 +193,22 @@
       var payload = {
         title: formData.get('title'),
         description: formData.get('description'),
-        promotion_type: formData.get('promotion_type'),
-        surprise_enabled: formData.get('surprise_enabled') === 'on',
-        coupon_label: formData.get('coupon_label'),
+        level_required: formData.get('level_required'),
         start_date: formData.get('start_date'),
-        end_date: formData.get('end_date')
+        end_date: formData.get('end_date'),
+        status: formData.get('status') || 'active'
       };
 
       AppUtils.setButtonLoading(button, true, 'Guardando...');
 
       try {
-        var result = await AppAPI.apiRequest('createBusinessPromotion', payload);
+        var result = await AppAPI.apiRequest('saveSimpleCoupon', payload);
+
+        if (!result.success) {
+          if (isNotImplemented(result, 'saveSimpleCoupon')) {
+            result = await AppAPI.apiRequest('createBusinessPromotion', payload);
+          }
+        }
 
         if (!result.success) {
           if (isNotImplemented(result, 'createBusinessPromotion')) {
@@ -217,7 +241,7 @@
     }
 
     if (!promotions.length) {
-      container.innerHTML = '<article class="empty-state"><div><i data-lucide="megaphone"></i><h2>Sin promociones</h2><p>Crea cupones sorpresa o promociones calendarizadas para fechas especiales.</p></div></article>';
+      container.innerHTML = '<article class="empty-state"><div><i data-lucide="megaphone"></i><h2>Sin promociones</h2><p>Crea promociones simples por nivel para tus clientes.</p></div></article>';
       AppUtils.mountIcons();
       return;
     }
@@ -230,19 +254,20 @@
   function renderBusinessPromotion(promotion) {
     var state = promotion.visibility_status || promotion.status || 'active';
     var isDisabled = state === 'disabled' || promotion.status === 'disabled';
-    var typeLabel = promotion.promotion_type === 'surprise' || promotion.type === 'surprise_coupon' ? 'Cupon sorpresa' : 'Promocion';
+    var couponId = promotion.coupon_id || promotion.promotion_id || '';
+    var typeLabel = 'Nivel ' + (promotion.level_required || 1);
     var action = isDisabled ?
-      '<button class="button button--success" type="button" data-promotion-status="' + escapeAttr(promotion.promotion_id) + '" data-status-value="active"><i data-lucide="play"></i>Activar</button>' :
-      '<button class="button button--ghost" type="button" data-promotion-status="' + escapeAttr(promotion.promotion_id) + '" data-status-value="disabled"><i data-lucide="pause"></i>Desactivar</button>';
+      '<button class="button button--success" type="button" data-promotion-status="' + escapeAttr(couponId) + '" data-status-value="active"><i data-lucide="play"></i>Activar</button>' :
+      '<button class="button button--ghost" type="button" data-promotion-status="' + escapeAttr(couponId) + '" data-status-value="disabled"><i data-lucide="pause"></i>Desactivar</button>';
 
-    return '<article class="request-card">' +
+    return '<article class="request-card" data-coupon-title="' + escapeAttr(promotion.title || 'Promocion') + '" data-coupon-description="' + escapeAttr(promotion.description || '') + '" data-coupon-level="' + escapeAttr(promotion.level_required || 1) + '" data-coupon-start="' + escapeAttr(promotion.start_date || '') + '" data-coupon-end="' + escapeAttr(promotion.end_date || '') + '">' +
       '<div class="request-card__main">' +
         '<div><span class="badge" data-status="' + escapeAttr(state) + '">' + escapeHtml(promotionStateLabel(state)) + '</span><h2>' + escapeHtml(promotion.title || 'Promocion') + '</h2><p>' + escapeHtml(promotion.description || '') + '</p></div>' +
         '<strong>' + escapeHtml(typeLabel) + '</strong>' +
       '</div>' +
       '<dl class="request-card__details">' +
-        '<div><dt>Tipo</dt><dd>' + escapeHtml(typeLabel) + '</dd></div>' +
-        '<div><dt>Cupon</dt><dd>' + escapeHtml(promotion.coupon_label || promotion.title || '') + '</dd></div>' +
+        '<div><dt>Nivel requerido</dt><dd>' + escapeHtml(typeLabel) + '</dd></div>' +
+        '<div><dt>Promocion</dt><dd>' + escapeHtml(promotion.title || '') + '</dd></div>' +
         '<div><dt>Inicio</dt><dd>' + escapeHtml(formatDateValue(promotion.start_date)) + '</dd></div>' +
         '<div><dt>Fin</dt><dd>' + escapeHtml(formatDateValue(promotion.end_date)) + '</dd></div>' +
         '<div><dt>Estado</dt><dd>' + escapeHtml(promotionStateLabel(state)) + '</dd></div>' +
@@ -263,10 +288,25 @@
     AppUtils.setButtonLoading(button, true, 'Guardando...');
 
     try {
-      var result = await AppAPI.apiRequest('updateBusinessPromotionStatus', {
-        promotion_id: promotionId,
+      var couponCard = button.closest('[data-coupon-title]');
+      var result = await AppAPI.apiRequest('saveSimpleCoupon', {
+        coupon_id: promotionId,
+        title: couponCard ? couponCard.dataset.couponTitle : 'Promocion',
+        description: couponCard ? couponCard.dataset.couponDescription : '',
+        level_required: couponCard ? couponCard.dataset.couponLevel : 1,
+        start_date: couponCard ? couponCard.dataset.couponStart : '',
+        end_date: couponCard ? couponCard.dataset.couponEnd : '',
         status: status
       });
+
+      if (!result.success) {
+        if (isNotImplemented(result, 'saveSimpleCoupon')) {
+          result = await AppAPI.apiRequest('updateBusinessPromotionStatus', {
+            promotion_id: promotionId,
+            status: status
+          });
+        }
+      }
 
       if (!result.success) {
         if (isNotImplemented(result, 'updateBusinessPromotionStatus')) {
@@ -317,6 +357,25 @@
     var coupons = item.coupons || [];
     var availableCoupons = item.available_coupons || coupons.filter(function(coupon) { return coupon.status === 'available'; });
     var phone = customer.phone || customer.phone_normalized || customer.whatsapp || '';
+    var level = item.level || {};
+
+    if (level.current_level || customer.customer_code) {
+      return '<article class="request-card" data-business-customer-card="' + escapeAttr(customer.customer_code || customer.wallet_id || '') + '">' +
+        '<div class="request-card__main">' +
+          '<div><span class="badge">Nivel ' + escapeHtml(level.current_level || customer.current_level || 1) + '</span><h2>' + escapeHtml(customer.full_name || 'Cliente') + '</h2><p>WhatsApp: ' + escapeHtml(phone || 'Sin numero') + '</p></div>' +
+          '<strong>' + escapeHtml((level.total_passes || customer.total_passes || 0) + ' pasadas') + '</strong>' +
+        '</div>' +
+        '<dl class="request-card__details">' +
+          '<div><dt>WhatsApp</dt><dd>' + escapeHtml(phone || 'Sin numero') + '</dd></div>' +
+          '<div><dt>Codigo</dt><dd>' + escapeHtml(customer.customer_code || customer.wallet_id || '') + '</dd></div>' +
+          '<div><dt>Progreso</dt><dd>' + escapeHtml(level.label || '') + '</dd></div>' +
+          '<div><dt>Ultima pasada</dt><dd>' + escapeHtml(item.last_pass_at ? AppUtils.formatDate(item.last_pass_at) : 'Sin fecha') + '</dd></div>' +
+        '</dl>' +
+        '<div class="request-card__actions">' +
+          '<a class="button button--ghost" href="scanner.html?code=' + encodeURIComponent(customer.customer_code || customer.wallet_id || '') + '"><i data-lucide="scan-line"></i>Escanear</a>' +
+        '</div>' +
+        '</article>';
+    }
 
     return '<article class="request-card" data-business-customer-card="' + escapeAttr(card.card_id || '') + '">' +
       '<div class="request-card__main">' +
@@ -325,7 +384,7 @@
       '</div>' +
       '<dl class="request-card__details">' +
         '<div><dt>WhatsApp</dt><dd>' + escapeHtml(phone || 'Sin numero') + '</dd></div>' +
-        '<div><dt>Wallet</dt><dd>' + escapeHtml(customer.wallet_id || '') + '</dd></div>' +
+        '<div><dt>Codigo</dt><dd>' + escapeHtml(customer.customer_code || customer.wallet_id || '') + '</dd></div>' +
         '<div><dt>Tarjeta</dt><dd>' + escapeHtml(card.card_id || '') + '</dd></div>' +
         '<div><dt>Bienvenida</dt><dd>' + escapeHtml(welcome.enabled ? welcome.status : 'none') + '</dd></div>' +
         '<div><dt>Cupones activos</dt><dd>' + escapeHtml(String(availableCoupons.length || 0)) + '</dd></div>' +
@@ -350,7 +409,7 @@
       var filtered = customers.filter(function(item) {
         var customer = item.customer || {};
         var card = item.card || {};
-        return [customer.full_name, customer.phone, customer.phone_normalized, customer.email, customer.wallet_id, card.card_id].join(' ').toLowerCase().indexOf(query) !== -1;
+        return [customer.full_name, customer.phone, customer.phone_normalized, customer.email, customer.wallet_id, customer.customer_code, card.card_id].join(' ').toLowerCase().indexOf(query) !== -1;
       });
 
       paintBusinessCustomers(filtered);
@@ -391,15 +450,13 @@
     var promotions = getLocalBusinessPromotions();
     var promotion = {
       promotion_id: 'LOCAL-PRO-' + Date.now(),
+      coupon_id: 'LOCAL-CPN-' + Date.now(),
       title: payload.title || 'Promocion',
       description: payload.description || '',
-      promotion_type: payload.promotion_type === 'surprise' ? 'surprise' : 'standard',
-      type: payload.promotion_type === 'surprise' ? 'surprise_coupon' : 'promotion',
-      surprise_enabled: Boolean(payload.surprise_enabled),
-      coupon_label: payload.coupon_label || payload.title || '',
+      level_required: parseInt(payload.level_required || '1', 10) || 1,
       start_date: payload.start_date || '',
       end_date: payload.end_date || '',
-      status: 'active',
+      status: payload.status || 'active',
       created_at: new Date().toISOString()
     };
 
@@ -476,6 +533,10 @@
       return 'Deshabilitada';
     }
 
+    if (state === 'inactive') {
+      return 'Inactiva';
+    }
+
     return 'Activa';
   }
 
@@ -509,6 +570,24 @@
     }
 
     return 'sellos';
+  }
+
+  function planStatusLabel(status) {
+    var value = String(status || 'active').toLowerCase();
+
+    if (value === 'trial') {
+      return 'Prueba gratis';
+    }
+
+    if (value === 'expired') {
+      return 'Vencido';
+    }
+
+    if (value === 'suspended') {
+      return 'Suspendido';
+    }
+
+    return 'Activo';
   }
 
   function paintPreviewBeans(goal) {

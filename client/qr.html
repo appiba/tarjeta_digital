@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mi QR | Loyalty</title>
-  <link rel="stylesheet" href="../assets/css/main.css?v=wallet-v21">
-  <link rel="stylesheet" href="../assets/css/client.css?v=wallet-v21">
+  <link rel="stylesheet" href="../assets/css/main.css?v=simple-mvp-v1">
+  <link rel="stylesheet" href="../assets/css/client.css?v=simple-mvp-v1">
 </head>
 <body data-root="../">
   <main class="client-page" data-client-content>
@@ -17,25 +17,24 @@
     <section class="wallet-qr-card">
       <span class="badge">Mi QR Loyalty</span>
       <h1 data-qr-customer>Cliente</h1>
-      <p>Usalo en cualquiera de tus establecimientos.</p>
+      <p>Este codigo es unico para toda la plataforma.</p>
       <div class="wallet-qr-frame">
-        <img data-wallet-qr-image alt="QR de Wallet">
+        <img data-wallet-qr-image alt="QR Loyalty">
       </div>
-      <strong data-wallet-qr-id>WALLET</strong>
+      <strong data-wallet-qr-id>LOY</strong>
       <small data-wallet-qr-payload></small>
     </section>
   </main>
-  <nav class="bottom-nav bottom-nav--five" aria-label="Cliente">
-    <a href="index.html"><i data-lucide="wallet"></i>Wallet</a>
+  <nav class="bottom-nav" aria-label="Cliente">
+    <a class="is-active" href="index.html"><i data-lucide="qr-code"></i>Mi QR</a>
     <a href="promociones.html"><i data-lucide="megaphone"></i>Promos</a>
-    <a class="is-active" href="qr.html"><i data-lucide="qr-code"></i>Mi QR</a>
     <a href="historial.html"><i data-lucide="clock-3"></i>Historial</a>
     <a href="perfil.html"><i data-lucide="user"></i>Perfil</a>
   </nav>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script src="../assets/js/utils.js?v=wallet-v21"></script>
-  <script src="../assets/js/api.js?v=wallet-v21"></script>
-  <script src="../assets/js/client.js?v=wallet-v21"></script>
+  <script src="../assets/js/utils.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/api.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/client.js?v=simple-mvp-v1"></script>
   <script>ClientApp.initPage('qr');</script>
 </body>
 </html>

@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Negocio | Loyalty</title>
-  <link rel="stylesheet" href="../assets/css/main.css?v=wallet-v21">
-  <link rel="stylesheet" href="../assets/css/business.css?v=wallet-v21">
+  <link rel="stylesheet" href="../assets/css/main.css?v=simple-mvp-v1">
+  <link rel="stylesheet" href="../assets/css/business.css?v=simple-mvp-v1">
 </head>
 <body class="business-accent" data-root="../">
   <div class="app-shell">
@@ -13,11 +13,9 @@
       <a class="brand" href="../index.html"><span class="brand__mark">L</span><span>Loyalty</span></a>
       <nav aria-label="Negocio">
         <a class="is-active" href="index.html"><i data-lucide="layout-dashboard"></i>Inicio</a>
-        <a href="tarjeta.html"><i data-lucide="badge"></i>Mi tarjeta</a>
-        <a href="clientes.html"><i data-lucide="users"></i>Clientes</a>
-        <a href="promociones.html"><i data-lucide="megaphone"></i>Promociones</a>
         <a href="scanner.html"><i data-lucide="scan-line"></i>Escanear</a>
-        <a href="transacciones.html"><i data-lucide="receipt-text"></i>Transacciones</a>
+        <a href="promociones.html"><i data-lucide="megaphone"></i>Promociones</a>
+        <a href="clientes.html"><i data-lucide="users"></i>Clientes</a>
         <a href="configuracion.html"><i data-lucide="settings"></i>Configuracion</a>
         <button type="button" data-logout><i data-lucide="log-out"></i>Cerrar sesion</button>
       </nav>
@@ -27,14 +25,15 @@
         <div>
           <span class="badge" data-page-label>Inicio</span>
           <h1>Panel del negocio</h1>
-          <p>Sesion validada para operar dentro de un negocio aprobado.</p>
+          <p>Escanea el codigo del cliente y registra pasadas de forma rapida.</p>
         </div>
         <div class="user-chip"><span data-user-name>Usuario</span></div>
       </section>
       <section class="stats-grid">
-        <article class="stat-card"><span>Clientes</span><strong data-stat-customers>0</strong></article>
-        <article class="stat-card"><span>Transacciones</span><strong data-stat-transactions>0</strong></article>
-        <article class="stat-card"><span>Promociones</span><strong data-stat-promotions>0</strong></article>
+        <article class="stat-card"><span>Clientes escaneados</span><strong data-stat-customers>0</strong></article>
+        <article class="stat-card"><span>Pasadas registradas</span><strong data-stat-transactions>0</strong></article>
+        <article class="stat-card"><span>Promociones activas</span><strong data-stat-promotions>0</strong></article>
+        <article class="stat-card"><span>Clientes con promocion</span><strong data-stat-eligible>0</strong></article>
       </section>
 
       <section class="business-dashboard-grid">
@@ -49,11 +48,17 @@
         </article>
 
         <article class="panel-card">
-          <h2>Configuracion de lealtad</h2>
+          <h2>Accion principal</h2>
+          <p>Escanea el QR o pega el codigo LOY del cliente. Luego confirma una sola pasada.</p>
+          <a class="button button--primary" href="scanner.html"><i data-lucide="scan-line"></i>Escanear cliente</a>
+        </article>
+
+        <article class="panel-card">
+          <h2>Plan del negocio</h2>
           <div class="settings-list">
-            <div><span>Programa</span><strong data-program-type>sellos</strong></div>
-            <div><span>Meta</span><strong><span data-program-goal>10</span></strong></div>
-            <div><span>Recompensa</span><strong data-reward-name>Premio especial</strong></div>
+            <div><span>Estado</span><strong data-plan-status>Activo</strong></div>
+            <div><span>Vence</span><strong data-plan-end>Sin fecha</strong></div>
+            <div><span>Programa</span><strong>Pasadas y niveles</strong></div>
           </div>
         </article>
 
@@ -67,32 +72,19 @@
           </div>
         </article>
 
-        <article class="panel-card business-preview-card">
-          <h2>Asi vera el cliente su tarjeta</h2>
-          <div class="coffee-card">
-            <div class="coffee-card__hero">
-              <div>
-                <div class="loyalty-preview__logo" data-business-initials>L</div>
-                <h3 data-business-name>Mi negocio</h3>
-                <p data-business-type>Tarjeta de lealtad</p>
-              </div>
-            </div>
-            <div class="coffee-card__body">
-              <strong>Hola, cliente</strong>
-              <div><strong>0 de <span data-program-goal>10</span> <span data-program-type>sellos</span></strong> <span style="float:right;">0%</span></div>
-              <div class="coffee-beans" data-preview-beans></div>
-              <div class="reward-strip"><i data-lucide="gift"></i><strong data-reward-name>Premio especial</strong></div>
-            </div>
-          </div>
+        <article class="panel-card">
+          <h2>Promociones por nivel</h2>
+          <p>Crea beneficios simples: Nivel 2, Nivel 5, Nivel 10. El cliente usa el mismo codigo en todos los negocios.</p>
+          <a class="button button--ghost" href="promociones.html"><i data-lucide="ticket"></i>Gestionar promociones</a>
         </article>
       </section>
     </main>
   </div>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script src="../assets/js/utils.js?v=wallet-v21"></script>
-  <script src="../assets/js/api.js?v=wallet-v21"></script>
-  <script src="../assets/js/auth.js?v=wallet-v21"></script>
-  <script src="../assets/js/business.js?v=wallet-v21"></script>
+  <script src="../assets/js/utils.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/api.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/auth.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/business.js?v=simple-mvp-v1"></script>
   <script>BusinessApp.initDashboard();</script>
 </body>
 </html>

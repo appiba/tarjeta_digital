@@ -84,6 +84,10 @@ function routeAction_(request) {
       return verifyCustomerOtp_(request.data);
     case 'registerCustomer':
       return registerCustomer_(request.data);
+    case 'simpleCustomerAccess':
+      return simpleCustomerAccess_(request.data);
+    case 'getSimpleCustomerProfile':
+      return getSimpleCustomerProfile_(request.data);
     case 'getPublicCard':
       return getPublicCard_(request.data);
     case 'getAdminStats':
@@ -110,6 +114,25 @@ function routeAction_(request) {
       return listAdminCustomers_(requireSession_(request.token, ['super_admin']), request.data);
     case 'analyzeCustomerDuplicates':
       return analyzeCustomerDuplicates_(requireSession_(request.token, ['super_admin']), request.data);
+    case 'renewBusinessPlan':
+      return renewBusinessPlan_(requireSession_(request.token, ['super_admin']), request.data);
+    case 'migrateToSimpleModel':
+      requireSession_(request.token, ['super_admin']);
+      return migrateToSimpleModel_();
+    case 'getSimpleBusinessHome':
+      return getSimpleBusinessHome_(requireSession_(request.token, ['business_owner', 'staff']));
+    case 'listSimpleBusinessCustomers':
+      return listSimpleBusinessCustomers_(requireSession_(request.token, ['business_owner', 'staff']));
+    case 'listSimpleCoupons':
+      return listSimpleCoupons_(requireSession_(request.token, ['business_owner', 'staff']));
+    case 'saveSimpleCoupon':
+      return saveSimpleCoupon_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
+    case 'scanSimpleCustomer':
+      return scanSimpleCustomer_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
+    case 'registerSimplePass':
+      return registerSimplePass_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
+    case 'redeemSimpleCoupon':
+      return redeemSimpleCoupon_(requireSession_(request.token, ['business_owner', 'staff']), request.data);
     case 'getBusinessHome':
       return getBusinessHome_(requireSession_(request.token, ['business_owner', 'staff']));
     case 'listBusinessCustomers':

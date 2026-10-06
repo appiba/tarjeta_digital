@@ -443,7 +443,7 @@ function extractWalletId_(value) {
 
 function abbreviateWalletId_(walletId) {
   var value = String(walletId || '');
-  return value.length > 6 ? 'WALLET •••• ' + value.slice(-6) : value;
+  return value.length > 6 ? 'LOY •••• ' + value.slice(-6) : value;
 }
 
 function buildClientWalletUrl_(walletId) {
@@ -453,7 +453,7 @@ function buildClientWalletUrl_(walletId) {
     return '';
   }
 
-  return appUrl.replace(/\/?$/, '/') + 'client/?wallet=' + encodeURIComponent(walletId || '');
+  return appUrl.replace(/\/?$/, '/') + 'client/?code=' + encodeURIComponent(walletId || '');
 }
 
 function buildBusinessScannerWalletUrl_(walletId, cardId) {
@@ -463,7 +463,7 @@ function buildBusinessScannerWalletUrl_(walletId, cardId) {
     return String(walletId || '');
   }
 
-  var url = appUrl.replace(/\/?$/, '/') + 'business/scanner.html?wallet=' + encodeURIComponent(walletId || '');
+  var url = appUrl.replace(/\/?$/, '/') + 'business/scanner.html?code=' + encodeURIComponent(walletId || '');
 
   if (cardId) {
     url += '&card=' + encodeURIComponent(cardId);

@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin | Loyalty</title>
-  <link rel="stylesheet" href="../assets/css/main.css?v=wallet-v21">
-  <link rel="stylesheet" href="../assets/css/admin.css?v=wallet-v21">
+  <link rel="stylesheet" href="../assets/css/main.css?v=simple-mvp-v1">
+  <link rel="stylesheet" href="../assets/css/admin.css?v=simple-mvp-v1">
 </head>
 <body class="admin-accent" data-root="../">
   <div class="app-shell">
@@ -15,10 +15,6 @@
         <a class="is-active" href="index.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
         <a href="solicitudes.html"><i data-lucide="inbox"></i>Solicitudes</a>
         <a href="negocios.html"><i data-lucide="store"></i>Negocios</a>
-        <a href="clientes.html"><i data-lucide="users"></i>Clientes</a>
-        <a href="transacciones.html"><i data-lucide="receipt-text"></i>Transacciones</a>
-        <a href="reportes.html"><i data-lucide="bar-chart-3"></i>Reportes</a>
-        <a href="configuracion.html"><i data-lucide="settings"></i>Configuracion</a>
         <button type="button" data-logout><i data-lucide="log-out"></i>Cerrar sesion</button>
       </nav>
     </aside>
@@ -37,17 +33,20 @@
         <article class="stat-card"><span>Negocios activos</span><strong data-stat="active_businesses">0</strong></article>
         <article class="stat-card"><span>Solicitudes pendientes</span><strong data-stat="pending_requests">0</strong></article>
         <article class="stat-card"><span>Clientes totales</span><strong data-stat="total_customers">0</strong></article>
-        <article class="stat-card"><span>Transacciones</span><strong data-stat="total_transactions">0</strong></article>
+        <article class="stat-card"><span>Pasadas registradas</span><strong data-stat="total_transactions">0</strong></article>
       </section>
 
       <section class="admin-dashboard-grid">
         <article class="panel-card">
-          <h2>Crecimiento de clientes</h2>
+          <h2>Planes y locales</h2>
           <div class="empty-state">
             <div>
               <i data-lucide="bar-chart-3"></i>
-              <h3>Sin datos suficientes</h3>
-              <p>El grafico se llenara cuando existan clientes y transacciones reales.</p>
+              <h3>Gestion simple</h3>
+              <p>Revisa negocios activos, vencidos o suspendidos desde el modulo Negocios.</p>
+              <div class="panel-actions">
+                <a class="button button--primary" href="negocios.html">Ver negocios</a>
+              </div>
             </div>
           </div>
         </article>
@@ -70,10 +69,10 @@
   </div>
 
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script src="../assets/js/utils.js?v=wallet-v21"></script>
-  <script src="../assets/js/api.js?v=wallet-v21"></script>
-  <script src="../assets/js/auth.js?v=wallet-v21"></script>
-  <script src="../assets/js/admin.js?v=wallet-v21"></script>
+  <script src="../assets/js/utils.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/api.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/auth.js?v=simple-mvp-v1"></script>
+  <script src="../assets/js/admin.js?v=simple-mvp-v1"></script>
   <script>AdminApp.initDashboard();</script>
 </body>
 </html>
