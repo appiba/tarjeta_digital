@@ -9,14 +9,28 @@
   async function init() {
     AppUtils.mountIcons();
     currentBusinessCode = getBusinessCode();
+    bindForms();
 
     if (!currentBusinessCode) {
-      setState('Falta el codigo del negocio en el link.');
-      showStep('error');
+      currentBusiness = {
+        business_name: 'Loyalty',
+        business_type: 'Wallet global',
+        primary_color: '#2563eb',
+        secondary_color: '#0f766e'
+      };
+      currentProgram = {
+        program_type: 'PASSES',
+        goal: 10
+      };
+      currentReward = {
+        reward_name: 'Ofertas, cupones sorpresa y descuentos'
+      };
+      paintBusiness(currentBusiness, currentProgram, currentReward);
+      setState('Ingresa tu WhatsApp para crear o abrir tu Wallet global.');
+      showStep('phone');
       return;
     }
 
-    bindForms();
     await loadBusiness();
   }
 

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0f172a">
   <title>Loyalty</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="assets/css/main.css?v=simple-mvp-v1">
+  <link rel="stylesheet" href="assets/css/main.css?v=home-roles-v1">
 </head>
 <body class="home-showcase" data-root="">
   <main class="showcase">
@@ -33,9 +33,41 @@
 
     <section class="showcase-main">
       <div class="showcase-actions" aria-label="Accesos principales">
-        <a class="button button--ghost" href="solicitud.html"><i data-lucide="store"></i>Solicitar acceso</a>
-        <a class="button button--primary" href="login.html"><i data-lucide="log-in"></i>Iniciar sesion</a>
+        <a class="button button--ghost" href="register/index.html"><i data-lucide="qr-code"></i>Cliente</a>
+        <a class="button button--ghost" href="business/index.html"><i data-lucide="store"></i>Dueno local</a>
+        <a class="button button--primary" href="admin/index.html"><i data-lucide="shield-check"></i>Administrador</a>
       </div>
+
+      <section class="home-entry" aria-labelledby="home-entry-title">
+        <div class="home-entry__copy">
+          <span class="badge">Plataforma simplificada</span>
+          <h1 id="home-entry-title">Una entrada clara para cada persona.</h1>
+          <p>Cliente, negocio y administrador entran por rutas separadas. El cliente usa su WhatsApp y recibe un codigo unico; el local escanea y registra una pasada; el administrador controla negocios, planes y solicitudes.</p>
+        </div>
+        <div class="role-links" aria-label="Links por rol">
+          <article class="role-card role-card--client">
+            <i data-lucide="user-round"></i>
+            <span>Clientes</span>
+            <h2>Crear o abrir Wallet</h2>
+            <p>El cliente pone su WhatsApp y entra a su QR unico Loyalty.</p>
+            <a class="button button--primary" href="register/index.html">Entrar cliente</a>
+          </article>
+          <article class="role-card role-card--business">
+            <i data-lucide="store"></i>
+            <span>Duenos de locales</span>
+            <h2>Panel del negocio</h2>
+            <p>Escanear clientes, sumar pasadas y crear promociones por nivel.</p>
+            <a class="button button--primary" href="business/index.html">Entrar negocio</a>
+          </article>
+          <article class="role-card role-card--admin">
+            <i data-lucide="crown"></i>
+            <span>Administrador</span>
+            <h2>Control general</h2>
+            <p>Aprobar solicitudes, renovar planes y suspender negocios vencidos.</p>
+            <a class="button button--primary" href="admin/index.html">Entrar admin</a>
+          </article>
+        </div>
+      </section>
 
       <section class="showcase-band showcase-band--client" aria-labelledby="client-title">
         <div class="showcase-pill showcase-pill--blue">
@@ -59,7 +91,7 @@
                 <div><i data-lucide="badge-check"></i><span>Acumula pasadas</span></div>
                 <div><i data-lucide="gift"></i><span>Obten premios</span></div>
                 <div><i data-lucide="megaphone"></i><span>Promociones exclusivas</span></div>
-                <a class="mock-button" href="solicitud.html">Crear mi codigo</a>
+                <a class="mock-button" href="register/index.html">Crear mi codigo</a>
               </div>
             </div>
           </article>

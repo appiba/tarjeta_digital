@@ -1,4 +1,4 @@
-const CACHE_NAME = 'loyalty-platform-simple-mvp-v1';
+const CACHE_NAME = 'loyalty-platform-home-roles-v1';
 const STATIC_ASSETS = [
   './',
   './index.html',
